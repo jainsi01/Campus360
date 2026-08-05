@@ -1,0 +1,2 @@
+-- Campus360 Database Schema
+-- Phase 2 will implement the complete tables, constraints, foreign keys, and indexes.

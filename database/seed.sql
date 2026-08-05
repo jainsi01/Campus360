@@ -1,0 +1,2 @@
+-- Campus360 Database Seed Data
+-- Phase 2 will implement the complete mock seed data insert statements.
