@@ -1,243 +1,45 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/common/ToastProvider';
-import EmptyState from '../../components/common/EmptyState';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
 import api from '../../services/api';
-import { BookOpen, Users, ClipboardCheck, FileText, UploadCloud, BarChart3, LogOut, CalendarCheck2 } from 'lucide-react';
+import { BookOpen, FileText, CalendarCheck2, UploadCloud, BarChart3, Plus, Pencil, Trash2, Download, RefreshCw } from 'lucide-react';
 
-const tabs = [
-  { key: 'overview', label: 'Overview', icon: BookOpen },
-  { key: 'subjects', label: 'Assigned Subjects', icon: Users },
-  { key: 'attendance', label: 'Attendance', icon: CalendarCheck2 },
-  { key: 'assignments', label: 'Assignments', icon: FileText },
-  { key: 'materials', label: 'Study Materials', icon: UploadCloud },
-  { key: 'marks', label: 'Marks', icon: BarChart3 }
-];
+const field = { width: '100%', padding: '.65rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--text-primary)' };
+const assignmentBlank = { subjectId: '', title: '', description: '', instructions: '', deadline: '', maxMarks: 100, attachmentUrl: '' };
+const materialBlank = { subjectId: '', title: '', description: '', fileUrl: '' };
 
-const FacultyDashboard = () => {
-  const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [data, setData] = useState({
-    subjects: [],
-    attendance: [],
-    assignments: [],
-    materials: [],
-    marks: []
-  });
+export default function FacultyDashboard() {
+  const { user } = useAuth(); const { success, error } = useToast();
+  const [tab, setTab] = useState('subjects'); const [busy, setBusy] = useState(true);
+  const [subjects, setSubjects] = useState([]); const [assignments, setAssignments] = useState([]); const [materials, setMaterials] = useState([]);
+  const [subjectId, setSubjectId] = useState(''); const [students, setStudents] = useState([]); const [attendance, setAttendance] = useState({});
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10)); const [marks, setMarks] = useState([]); const [search, setSearch] = useState('');
+  const [assignment, setAssignment] = useState(assignmentBlank); const [assignmentId, setAssignmentId] = useState(null);
+  const [material, setMaterial] = useState(materialBlank); const [materialId, setMaterialId] = useState(null);
+  const [submissions, setSubmissions] = useState([]); const [submissionAssignment, setSubmissionAssignment] = useState(null);
+  const reload = async () => { setBusy(true); try { const [s,a,m] = await Promise.all([api.get('/faculty-features/assigned-subjects'),api.get('/faculty-features/assignments'),api.get('/faculty-features/study-materials')]); const next=s.data?.data||[]; setSubjects(next); setAssignments(a.data?.data||[]); setMaterials(m.data?.data||[]); setSubjectId(x=>x||String(next[0]?.subject_id||'')); } catch(e) { error(e.response?.data?.message||'Unable to load faculty workspace'); } finally { setBusy(false); } };
+  useEffect(()=>{reload();},[]);
+  useEffect(()=>{ if(!subjectId)return; (async()=>{try { const [r,a,m]=await Promise.all([api.get(`/faculty-features/subjects/${subjectId}/students`),api.get(`/faculty-features/attendance?subjectId=${subjectId}&date=${date}`),api.get(`/faculty-features/marks/subject/${subjectId}`)]); const roster=r.data?.data||[]; setStudents(roster); const saved=Object.fromEntries((a.data?.data||[]).map(x=>[x.student_id,x.status])); setAttendance(Object.fromEntries(roster.map(x=>[x.id,saved[x.id]||'PRESENT']))); setMarks(m.data?.data||[]); }catch(e){error(e.response?.data?.message||'Unable to load class data');}})(); },[subjectId,date]);
+  const optionStyle = { color: '#0f172a', backgroundColor: '#ffffff' };
+  const options=<><option value="" style={optionStyle}>Select an assigned subject</option>{subjects.map(s=><option value={s.subject_id} key={s.subject_id} style={optionStyle}>{s.subject_name} ({s.subject_code})</option>)}</>;
+  const saveAssignment=async(e)=>{e.preventDefault();try{const payload={...assignment,subjectId:Number(assignment.subjectId),maxMarks:Number(assignment.maxMarks)}; assignmentId?await api.put(`/faculty-features/assignments/${assignmentId}`,payload):await api.post('/faculty-features/assignments',payload);success(assignmentId?'Assignment updated':'Assignment created');setAssignment(assignmentBlank);setAssignmentId(null);reload();}catch(x){error(x.response?.data?.message||'Unable to save assignment');}};
+  const editAssignment=a=>{setAssignmentId(a.id);setAssignment({subjectId:String(a.subject_id),title:a.title,description:a.description,instructions:a.instructions||'',deadline:a.deadline?.slice(0,16)||'',maxMarks:a.max_marks,attachmentUrl:a.attachment_url||''});};
+  const deleteAssignment=async(id)=>{if(!confirm('Delete this assignment?'))return;try{await api.delete(`/faculty-features/assignments/${id}`);success('Assignment deleted');reload();}catch(e){error(e.response?.data?.message||'Unable to delete assignment');}};
+  const loadSubmissions=async a=>{try{const r=await api.get(`/faculty-features/assignments/${a.id}/submissions`);setSubmissions(r.data?.data||[]);setSubmissionAssignment(a);}catch(e){error(e.response?.data?.message||'Unable to load submissions');}};
+  const saveAttendance=async()=>{try{await api.post('/faculty-features/attendance',{subjectId:Number(subjectId),date,records:students.map(s=>({studentId:s.id,status:attendance[s.id]}))});success('Attendance saved');}catch(e){error(e.response?.data?.message||'Unable to save attendance');}};
+  const saveMaterial=async(e)=>{e.preventDefault();try{const payload={...material,subjectId:Number(material.subjectId)};materialId?await api.put(`/faculty-features/study-materials/${materialId}`,payload):await api.post('/faculty-features/study-materials',payload);success(materialId?'Material updated':'Material uploaded');setMaterial(materialBlank);setMaterialId(null);reload();}catch(x){error(x.response?.data?.message||'Unable to save material');}};
+  const deleteMaterial=async id=>{if(!confirm('Delete this material?'))return;try{await api.delete(`/faculty-features/study-materials/${id}`);success('Material deleted');reload();}catch(e){error(e.response?.data?.message||'Unable to delete material');}};
+  if(busy)return <div className="landing-page" style={{padding:'3rem'}}>Loading faculty workspace…</div>;
+  return <div className="landing-page" style={{padding:'2rem',maxWidth:'1200px',margin:'auto'}}>
+    <div style={{display:'flex',justifyContent:'space-between',marginBottom:'1rem'}}><div><h1>Faculty Academic Workspace</h1><p style={{color:'var(--text-secondary)'}}>{user?.name} — assigned classes only</p></div><button className="btn btn-secondary" onClick={reload}><RefreshCw size={16}/> Refresh</button></div>
+    <nav style={{display:'flex',gap:'.5rem',overflowX:'auto',marginBottom:'1rem'}}>{[['subjects','Subjects',BookOpen],['assignments','Assignments',FileText],['attendance','Attendance',CalendarCheck2],['materials','Materials',UploadCloud],['marks','Marks',BarChart3]].map(([k,l,I])=><button className="btn" onClick={()=>setTab(k)} key={k} style={{background:tab===k?'var(--primary)':'var(--bg-card)'}}><I size={16}/>{l}</button>)}</nav>
+    {tab==='subjects'&&<section className="feature-card"><label>Assigned subject</label><select style={field} value={subjectId} onChange={e=>setSubjectId(e.target.value)}>{options}</select><h3 style={{marginTop:'1rem'}}>Enrolled students</h3>{students.map(s=><p key={s.id} style={{padding:'.7rem 0',borderBottom:'1px solid var(--border-color)'}}><b>{s.name}</b> — {s.student_id} <span style={{color:'var(--text-secondary)'}}>{s.email}</span></p>)}{!students.length&&<p>No students are enrolled in this subject.</p>}</section>}
+    {tab==='assignments'&&<div style={{display:'grid',gridTemplateColumns:'1fr minmax(320px,.8fr)',gap:'1rem'}}><section className="feature-card"><div style={{display:'flex',justifyContent:'space-between'}}><h3>My assignments</h3><input style={{...field,width:'180px'}} placeholder="Search" value={search} onChange={e=>setSearch(e.target.value)}/></div>{assignments.filter(a=>`${a.title} ${a.subject_name}`.toLowerCase().includes(search.toLowerCase())).map(a=><div key={a.id} style={{padding:'1rem 0',borderTop:'1px solid var(--border-color)'}}><b>{a.title}</b><p style={{color:'var(--text-secondary)'}}>{a.subject_name} · deadline {new Date(a.deadline).toLocaleString()} · {a.submission_count||0} submissions</p><button className="btn btn-secondary" onClick={()=>loadSubmissions(a)}>Submissions</button> <button className="btn btn-secondary" onClick={()=>editAssignment(a)}><Pencil size={14}/></button> <button className="btn btn-secondary" onClick={()=>deleteAssignment(a.id)}><Trash2 size={14}/></button></div>)}</section><form className="feature-card" onSubmit={saveAssignment}><h3>{assignmentId?'Edit':'Create'} assignment</h3><select required style={field} value={assignment.subjectId} onChange={e=>setAssignment({...assignment,subjectId:e.target.value})}>{options}</select><input required style={{...field,marginTop:'.6rem'}} placeholder="Title" value={assignment.title} onChange={e=>setAssignment({...assignment,title:e.target.value})}/><textarea required style={{...field,marginTop:'.6rem'}} placeholder="Description" value={assignment.description} onChange={e=>setAssignment({...assignment,description:e.target.value})}/><textarea style={{...field,marginTop:'.6rem'}} placeholder="Instructions" value={assignment.instructions} onChange={e=>setAssignment({...assignment,instructions:e.target.value})}/><input required type="datetime-local" style={{...field,marginTop:'.6rem'}} value={assignment.deadline} onChange={e=>setAssignment({...assignment,deadline:e.target.value})}/><input required min="1" type="number" style={{...field,marginTop:'.6rem'}} value={assignment.maxMarks} onChange={e=>setAssignment({...assignment,maxMarks:e.target.value})}/><input type="url" style={{...field,marginTop:'.6rem'}} placeholder="Attachment URL" value={assignment.attachmentUrl} onChange={e=>setAssignment({...assignment,attachmentUrl:e.target.value})}/><button className="btn btn-primary" style={{marginTop:'.8rem'}}><Plus size={16}/>{assignmentId?'Save changes':'Create assignment'}</button></form></div>}
+    {tab==='attendance'&&<section className="feature-card"><div style={{display:'flex',gap:'.75rem'}}><select style={field} value={subjectId} onChange={e=>setSubjectId(e.target.value)}>{options}</select><input style={field} type="date" value={date} onChange={e=>setDate(e.target.value)}/></div><h3 style={{marginTop:'1rem'}}>Attendance register</h3>{students.map(s=><div key={s.id} style={{display:'flex',justifyContent:'space-between',padding:'.7rem 0',borderBottom:'1px solid var(--border-color)'}}><span>{s.name} ({s.student_id})</span><select style={{...field,width:'130px'}} value={attendance[s.id]||'PRESENT'} onChange={e=>setAttendance({...attendance,[s.id]:e.target.value})}><option>PRESENT</option><option>ABSENT</option></select></div>)}<button className="btn btn-primary" style={{marginTop:'1rem'}} onClick={saveAttendance}>Save attendance</button></section>}
+    {tab==='materials'&&<div style={{display:'grid',gridTemplateColumns:'1fr minmax(320px,.8fr)',gap:'1rem'}}><section className="feature-card"><h3>My uploaded materials</h3>{materials.map(m=><div key={m.id} style={{padding:'1rem 0',borderTop:'1px solid var(--border-color)'}}><b>{m.title}</b><p style={{color:'var(--text-secondary)'}}>{m.subject_name}</p><a className="btn btn-secondary" href={m.file_url} target="_blank" rel="noreferrer"><Download size={14}/>Open</a> <button className="btn btn-secondary" onClick={()=>{setMaterialId(m.id);setMaterial({subjectId:String(m.subject_id),title:m.title,description:m.description||'',fileUrl:m.file_url})}}><Pencil size={14}/></button> <button className="btn btn-secondary" onClick={()=>deleteMaterial(m.id)}><Trash2 size={14}/></button></div>)}</section><form className="feature-card" onSubmit={saveMaterial}><h3>{materialId?'Edit':'Upload'} material</h3><select required style={field} value={material.subjectId} onChange={e=>setMaterial({...material,subjectId:e.target.value})}>{options}</select><input required style={{...field,marginTop:'.6rem'}} placeholder="Material title" value={material.title} onChange={e=>setMaterial({...material,title:e.target.value})}/><textarea style={{...field,marginTop:'.6rem'}} placeholder="Description" value={material.description} onChange={e=>setMaterial({...material,description:e.target.value})}/><input required type="url" style={{...field,marginTop:'.6rem'}} placeholder="PDF, DOC, PPT or image URL" value={material.fileUrl} onChange={e=>setMaterial({...material,fileUrl:e.target.value})}/><button className="btn btn-primary" style={{marginTop:'.8rem'}}>{materialId?'Save changes':'Upload material'}</button></form></div>}
+    {tab==='marks'&&<section className="feature-card"><select style={field} value={subjectId} onChange={e=>setSubjectId(e.target.value)}>{options}</select><h3 style={{marginTop:'1rem'}}>Marks</h3>{marks.map(m=><p key={m.id} style={{padding:'.7rem 0',borderBottom:'1px solid var(--border-color)'}}><b>{m.student_name}</b> ({m.roll_number}) — {m.exam_name}: {m.total_marks} · {m.grade||'Not graded'}</p>)}{!marks.length&&<p>No marks records yet.</p>}</section>}
+    {submissionAssignment&&<Submissions assignment={submissionAssignment} items={submissions} close={()=>setSubmissionAssignment(null)} refresh={loadSubmissions} error={error} success={success}/>}</div>;
+}
 
-  useEffect(() => {
-    const fetchFacultyData = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const [subjectsRes, attendanceRes, assignmentsRes, materialsRes, marksRes] = await Promise.all([
-          api.get('/faculty-features/assigned-subjects'),
-          api.get('/faculty-features/attendance?subjectId=1&date=2026-08-05'),
-          api.get('/faculty-features/assignments'),
-          api.get('/faculty-features/study-materials'),
-          api.get('/faculty-features/marks/subject/1')
-        ]);
-
-        setData({
-          subjects: subjectsRes.data?.data || [],
-          attendance: attendanceRes.data?.data || [],
-          assignments: assignmentsRes.data?.data || [],
-          materials: materialsRes.data?.data || [],
-          marks: marksRes.data?.data || []
-        });
-      } catch (err) {
-        setError(err.response?.data?.message || 'Unable to load faculty data from Campus360.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchFacultyData();
-  }, []);
-
-  const stats = useMemo(() => [
-    { label: 'Assigned Subjects', value: data.subjects.length, icon: BookOpen },
-    { label: 'Attendance Records', value: data.attendance.length, icon: CalendarCheck2 },
-    { label: 'Assignments', value: data.assignments.length, icon: FileText },
-    { label: 'Study Materials', value: data.materials.length, icon: UploadCloud },
-    { label: 'Marks Entries', value: data.marks.length, icon: BarChart3 }
-  ], [data]);
-
-  const renderOverview = () => (
-    <div>
-      <div className="features-grid" style={{ marginBottom: '1.5rem' }}>
-        {stats.map(({ label, value, icon: Icon }) => (
-          <div className="feature-card" key={label}>
-            <div className="feature-icon-wrapper"><Icon size={22} /></div>
-            <h3>{label}</h3>
-            <p style={{ fontSize: '2rem', fontWeight: 800, margin: 0 }}>{value}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="feature-card" style={{ minHeight: '180px' }}>
-        <h3>Assigned Subjects</h3>
-        {data.subjects.length === 0 ? (
-          <p>No assigned subjects found.</p>
-        ) : (
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {data.subjects.slice(0, 6).map((subject) => (
-              <li key={subject.subject_id} style={{ color: 'var(--text-secondary)' }}>
-                • {subject.subject_name} ({subject.subject_code}) — Semester {subject.semester}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
-
-  const renderSubjects = () => (
-    <div className="feature-card">
-      <h3>Assigned Subjects</h3>
-      {data.subjects.length === 0 ? <p>No subjects assigned.</p> : (
-        <div style={{ display: 'grid', gap: '0.8rem' }}>
-          {data.subjects.map((subject) => (
-            <div key={subject.subject_id} style={{ border: '1px solid var(--border-color)', borderRadius: '10px', padding: '1rem' }}>
-              <strong>{subject.subject_name}</strong>
-              <div style={{ color: 'var(--text-secondary)', marginTop: '0.4rem' }}>
-                Code: {subject.subject_code} • Semester: {subject.semester} • Course: {subject.course_name}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
-  const renderAttendance = () => (
-    <div className="feature-card">
-      <h3>Attendance</h3>
-      {data.attendance.length === 0 ? <p>No attendance data available for the selected date.</p> : (
-        <div style={{ display: 'grid', gap: '0.8rem' }}>
-          {data.attendance.map((entry) => (
-            <div key={entry.attendance_id} style={{ border: '1px solid var(--border-color)', borderRadius: '10px', padding: '1rem' }}>
-              <strong>{entry.student_name}</strong>
-              <div style={{ color: 'var(--text-secondary)', marginTop: '0.4rem' }}>
-                Roll: {entry.roll_number} • Status: {entry.status}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
-  const renderAssignments = () => (
-    <div className="feature-card">
-      <h3>Assignments</h3>
-      {data.assignments.length === 0 ? <p>No assignments published.</p> : (
-        <div style={{ display: 'grid', gap: '0.8rem' }}>
-          {data.assignments.map((assignment) => (
-            <div key={assignment.id} style={{ border: '1px solid var(--border-color)', borderRadius: '10px', padding: '1rem' }}>
-              <strong>{assignment.title}</strong>
-              <div style={{ color: 'var(--text-secondary)', marginTop: '0.4rem' }}>
-                {assignment.subject_name} • Deadline: {new Date(assignment.deadline).toLocaleString()} • Submissions: {assignment.submission_count || 0}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
-  const renderMaterials = () => (
-    <div className="feature-card">
-      <h3>Study Materials</h3>
-      {data.materials.length === 0 ? <p>No study materials uploaded.</p> : (
-        <div style={{ display: 'grid', gap: '0.8rem' }}>
-          {data.materials.map((material) => (
-            <div key={material.id} style={{ border: '1px solid var(--border-color)', borderRadius: '10px', padding: '1rem' }}>
-              <strong>{material.title}</strong>
-              <div style={{ color: 'var(--text-secondary)', marginTop: '0.4rem' }}>
-                {material.subject_name} • {material.file_url}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
-  const renderMarks = () => (
-    <div className="feature-card">
-      <h3>Marks</h3>
-      {data.marks.length === 0 ? <p>No marks available yet.</p> : (
-        <div style={{ display: 'grid', gap: '0.8rem' }}>
-          {data.marks.map((mark) => (
-            <div key={mark.id} style={{ border: '1px solid var(--border-color)', borderRadius: '10px', padding: '1rem' }}>
-              <strong>{mark.student_name}</strong>
-              <div style={{ color: 'var(--text-secondary)', marginTop: '0.4rem' }}>
-                {mark.exam_name} • Total: {mark.total_marks || 0} • Grade: {mark.grade || 'N/A'}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'subjects': return renderSubjects();
-      case 'attendance': return renderAttendance();
-      case 'assignments': return renderAssignments();
-      case 'materials': return renderMaterials();
-      case 'marks': return renderMarks();
-      default: return renderOverview();
-    }
-  };
-
-  return (
-    <div className="landing-page" style={{ padding: '3rem 2rem', maxWidth: '1200px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', gap: '1rem', flexWrap: 'wrap' }}>
-        <div>
-          <h1 style={{ fontSize: '2.25rem', fontWeight: 800 }}>Welcome, {user?.name}</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Campus360 Faculty Portal — Role: <strong style={{ color: '#818cf8' }}>{user?.role}</strong></p>
-        </div>
-        <button onClick={logout} className="btn btn-secondary" style={{ gap: '0.5rem' }}>
-          <LogOut size={18} /> Sign Out
-        </button>
-      </div>
-
-      <div className="features-grid" style={{ marginBottom: '1.5rem' }}>
-        {tabs.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            className="feature-card"
-            onClick={() => setActiveTab(key)}
-            style={{
-              textAlign: 'left',
-              cursor: 'pointer',
-              border: activeTab === key ? '1px solid rgba(129, 140, 248, 0.9)' : '1px solid var(--border-color)',
-              background: activeTab === key ? 'rgba(129,140,248,0.08)' : 'var(--bg-card)'
-            }}
-          >
-            <div className="feature-icon-wrapper"><Icon size={22} /></div>
-            <h3>{label}</h3>
-          </button>
-        ))}
-      </div>
-
-      {error && (
-        <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)', color: '#fca5a5', padding: '0.9rem 1rem', borderRadius: '10px', marginBottom: '1rem' }}>
-          {error}
-        </div>
-      )}
-
-      {loading ? (
-        <div className="feature-card"><p>Loading faculty workspace...</p></div>
-      ) : renderTabContent()}
-    </div>
-  );
-};
-
-export default FacultyDashboard;
+function Submissions({assignment,items,close,refresh,error,success}) { return <div style={{position:'fixed',inset:0,zIndex:1200,background:'rgba(0,0,0,.72)',padding:'2rem',overflowY:'auto'}}><section className="feature-card" style={{maxWidth:'800px',margin:'auto'}}><button className="btn btn-secondary" onClick={close} style={{float:'right'}}>Close</button><h2>Submissions: {assignment.title}</h2>{items.map(s=><Submission key={s.id} item={s} assignment={assignment} refresh={refresh} error={error} success={success}/>) }{!items.length&&<p>No submissions yet.</p>}</section></div>; }
+function Submission({item,assignment,refresh,error,success}) { const [marks,setMarks]=useState(item.marks??''); const [feedback,setFeedback]=useState(item.feedback??''); const [status,setStatus]=useState(item.status==='REJECTED'?'REJECTED':'GRADED'); const save=async()=>{try{await api.post(`/faculty-features/assignments/${assignment.id}/submissions/${item.id}/grade`,{marks:Number(marks),feedback,status});success('Evaluation saved');refresh(assignment);}catch(e){error(e.response?.data?.message||'Unable to save evaluation');}};return <div style={{borderTop:'1px solid var(--border-color)',padding:'1rem 0'}}><b>{item.student_name}</b> ({item.roll_number}) · <a href={item.submission_url} target="_blank" rel="noreferrer">Download submission</a><div style={{display:'flex',gap:'.5rem',marginTop:'.5rem'}}><input style={field} type="number" min="0" placeholder="Marks" value={marks} onChange={e=>setMarks(e.target.value)}/><select style={field} value={status} onChange={e=>setStatus(e.target.value)}><option value="GRADED">Grade</option><option value="REJECTED">Reject</option></select></div><textarea style={{...field,marginTop:'.5rem'}} placeholder="Feedback" value={feedback} onChange={e=>setFeedback(e.target.value)}/><button className="btn btn-primary" style={{marginTop:'.5rem'}} onClick={save}>Save evaluation</button></div>; }

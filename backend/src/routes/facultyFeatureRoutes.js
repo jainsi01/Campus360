@@ -16,6 +16,7 @@ const router = express.Router();
 router.use(authMiddleware);
 
 router.get('/assigned-subjects', authorize('FACULTY'), facultySubjectController.getMyAssignedSubjects);
+router.get('/subjects/:subjectId/students', authorize('FACULTY'), facultySubjectController.getMySubjectStudents);
 
 
 router.get('/attendance', authorize('FACULTY'), attendanceController.getAttendanceBySubjectAndDate);

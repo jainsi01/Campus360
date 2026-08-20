@@ -1,5 +1,6 @@
 const StudyMaterialModel = require('../models/StudyMaterialModel');
 const FacultyModel = require('../models/FacultyModel');
+const FacultySubjectModel = require('../models/FacultySubjectModel');
 const asyncHandler = require('../utils/asyncHandler');
 const { BadRequestError, NotFoundError } = require('../utils/ApiError');
 
@@ -8,7 +9,6 @@ const getMyStudyMaterials = asyncHandler(async (req, res) => {
   if (!faculty) {
     return res.status(200).json({ success: true, data: [] });
   }
-
   const items = await StudyMaterialModel.getByFaculty(faculty.id);
   res.status(200).json({ success: true, data: items });
 });
@@ -28,6 +28,8 @@ const createStudyMaterial = asyncHandler(async (req, res) => {
   if (!faculty) {
     throw new BadRequestError('Faculty profile not found for this user');
   }
+  const allowed = await FacultySubjectModel.isFacultyAssignedToSubject(faculty.id, subjectId);
+  if (!allowed) throw new BadRequestError('You can only upload materials for subjects assigned to you');
 
   const materialId = await StudyMaterialModel.create({
     subjectId,

@@ -1,6 +1,7 @@
 const FacultySubjectModel = require('../models/FacultySubjectModel');
 const FacultyModel = require('../models/FacultyModel');
 const asyncHandler = require('../utils/asyncHandler');
+const { ForbiddenError } = require('../utils/ApiError');
 
 const getMyAssignedSubjects = asyncHandler(async (req, res) => {
   const faculty = await FacultyModel.findByUserId(req.user.id);
@@ -28,7 +29,16 @@ const assignFacultyToSubject = asyncHandler(async (req, res) => {
   });
 });
 
+const getMySubjectStudents = asyncHandler(async (req, res) => {
+  const faculty = await FacultyModel.findByUserId(req.user.id);
+  if (!faculty) return res.status(200).json({ success: true, data: [] });
+  const students = await FacultySubjectModel.getEnrolledStudentsForSubject(faculty.id, req.params.subjectId);
+  if (students === null) throw new ForbiddenError('You are not assigned to this subject');
+  res.status(200).json({ success: true, data: students });
+});
+
 module.exports = {
   getMyAssignedSubjects,
-  assignFacultyToSubject
+  assignFacultyToSubject,
+  getMySubjectStudents
 };

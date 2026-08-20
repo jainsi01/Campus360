@@ -35,6 +35,19 @@ class FacultySubjectModel {
     );
     return rows.length > 0;
   }
+
+  static async getEnrolledStudentsForSubject(facultyId, subjectId) {
+    const allowed = await this.isFacultyAssignedToSubject(facultyId, subjectId);
+    if (!allowed) return null;
+    return query(`
+      SELECT s.id, s.student_id, s.semester, u.name, u.email
+      FROM enrollments e
+      JOIN students s ON s.id = e.student_id
+      JOIN users u ON u.id = s.user_id
+      WHERE e.subject_id = ? AND e.status = 'ENROLLED'
+      ORDER BY u.name ASC
+    `, [subjectId]);
+  }
 }
 
 module.exports = FacultySubjectModel;
