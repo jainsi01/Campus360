@@ -61,6 +61,11 @@ class UserModel {
     return result.affectedRows > 0;
   }
 
+  static async updateProfile(id, { name, email }) {
+    const result = await query('UPDATE users SET name = ?, email = ? WHERE id = ?', [name, email, id]);
+    return result.affectedRows > 0;
+  }
+
   static async getAllUsers({ role, search, limit = 50, offset = 0 } = {}) {
     let sql = `
       SELECT id, name, email, role, status, created_at, updated_at

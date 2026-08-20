@@ -204,7 +204,7 @@ const getMyAssignments = asyncHandler(async (req, res) => {
   const student = await getStudentRecord(req.user.id);
   if (!student) return res.status(200).json({ success: true, data: [] });
   const rows = await query(`
-    SELECT a.id, a.subject_id, a.title, a.description, a.deadline, a.created_at,
+    SELECT a.id, a.subject_id, a.title, a.description, a.instructions, a.max_marks, a.deadline, a.attachment_url, a.created_at,
            sub.name AS subject_name, sub.code AS subject_code,
            s.status AS submission_status,
            s.marks AS submission_marks

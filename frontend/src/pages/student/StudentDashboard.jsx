@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../components/common/ToastProvider';
 import api from '../../services/api';
 import { BookOpen, CheckCircle2, ClipboardCheck, FileText, UploadCloud, BarChart3, CalendarClock, Clock3, BadgeDollarSign, Bell, AlertCircle, MessageSquareText, LogOut, Award } from 'lucide-react';
 
 const tabs = [
+  { key: 'profile', label: 'My Profile', icon: BookOpen },
   { key: 'overview', label: 'Overview', icon: BookOpen },
   { key: 'subjects', label: 'Subjects', icon: BookOpen },
   { key: 'attendance', label: 'Attendance', icon: CheckCircle2 },
@@ -22,6 +24,7 @@ const tabs = [
 
 const StudentDashboard = () => {
   const { user, logout } = useAuth();
+  const { success, error: showError } = useToast();
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -40,6 +43,26 @@ const StudentDashboard = () => {
     notifications: [],
     complaints: []
   });
+  const [submissionUrls, setSubmissionUrls] = useState({});
+  const [complaintForm, setComplaintForm] = useState({ subject: '', description: '' });
+  const [profileForm, setProfileForm] = useState({ name: user?.name || '', email: user?.email || '' });
+  const [assignmentSearch, setAssignmentSearch] = useState('');
+
+  const submitAssignment = async (assignment) => {
+    if (!submissionUrls[assignment.id]) return showError('Enter your submission file URL first');
+    try { await api.post('/student-features/submissions', { assignmentId: assignment.id, submissionUrl: submissionUrls[assignment.id] }); success('Assignment submitted'); window.location.reload(); }
+    catch (err) { showError(err.response?.data?.message || 'Unable to submit assignment'); }
+  };
+  const submitComplaint = async (event) => {
+    event.preventDefault();
+    try { await api.post('/student-features/complaints', complaintForm); success('Complaint submitted'); window.location.reload(); }
+    catch (err) { showError(err.response?.data?.message || 'Unable to submit complaint'); }
+  };
+  const saveProfile = async (event) => {
+    event.preventDefault();
+    try { await api.put('/auth/me', profileForm); success('Profile updated successfully'); }
+    catch (err) { showError(err.response?.data?.message || 'Unable to update profile'); }
+  };
 
   useEffect(() => {
     const fetchStudentData = async () => {
@@ -122,6 +145,8 @@ const StudentDashboard = () => {
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case 'profile':
+        return <div className="feature-card"><h3>My Profile</h3><form onSubmit={saveProfile} style={{ display: 'grid', gap: '0.75rem', maxWidth: '520px' }}><input required className="form-input" value={profileForm.name} onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}/><input required type="email" className="form-input" value={profileForm.email} onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}/><button className="btn btn-primary">Save profile</button></form></div>;
       case 'subjects':
         return renderSection('Subjects', data.subjects, 'No subjects enrolled.', (s) => (
           <div key={s.subject_id || s.id} style={{ border: '1px solid var(--border-color)', borderRadius: '10px', padding: '1rem' }}>
@@ -137,12 +162,14 @@ const StudentDashboard = () => {
           </div>
         ));
       case 'assignments':
-        return renderSection('Assignments', data.assignments, 'No assignments available.', (a) => (
+        return <div className="feature-card"><div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '1rem' }}><h3>Assignments</h3><input className="form-input" style={{ maxWidth: '250px' }} placeholder="Search assignments" value={assignmentSearch} onChange={(e) => setAssignmentSearch(e.target.value)}/></div>{data.assignments.filter((a) => `${a.title} ${a.subject_name}`.toLowerCase().includes(assignmentSearch.toLowerCase())).map((a) => (
           <div key={a.id} style={{ border: '1px solid var(--border-color)', borderRadius: '10px', padding: '1rem' }}>
             <strong>{a.title}</strong>
+            {a.attachment_url && <a href={a.attachment_url} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ marginLeft: '0.5rem' }}>Download attachment</a>}
+            {new Date(a.deadline) >= new Date() && <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.6rem' }}><input className="form-input" placeholder="Submission file URL" value={submissionUrls[a.id] || ''} onChange={(e) => setSubmissionUrls({ ...submissionUrls, [a.id]: e.target.value })}/><button className="btn btn-primary" onClick={() => submitAssignment(a)}>{a.submission_status ? 'Update submission' : 'Submit'}</button></div>}
             <div style={{ color: 'var(--text-secondary)', marginTop: '0.4rem' }}>{a.subject_name} • Deadline: {new Date(a.deadline).toLocaleString()} • Submitted: {a.submission_status || 'Not yet'}</div>
           </div>
-        ));
+        ))}</div>;
       case 'submissions':
         return renderSection('Submissions', data.submissions, 'No submissions made yet.', (s) => (
           <div key={s.id} style={{ border: '1px solid var(--border-color)', borderRadius: '10px', padding: '1rem' }}>
@@ -207,12 +234,12 @@ const StudentDashboard = () => {
           </div>
         ));
       case 'complaints':
-        return renderSection('Complaints', data.complaints, 'No complaints submitted.', (c) => (
+        return <div className="feature-card"><h3>Submit a complaint</h3><form onSubmit={submitComplaint} style={{ display: 'grid', gap: '0.75rem', marginBottom: '1.5rem' }}><input required className="form-input" placeholder="Subject" value={complaintForm.subject} onChange={(e) => setComplaintForm({ ...complaintForm, subject: e.target.value })}/><textarea required className="form-input" placeholder="Describe your issue" value={complaintForm.description} onChange={(e) => setComplaintForm({ ...complaintForm, description: e.target.value })}/><button className="btn btn-primary">Submit complaint</button></form>{data.complaints.length === 0 ? <p>No complaints submitted.</p> : <div style={{ display: 'grid', gap: '0.8rem' }}>{data.complaints.map((c) => (
           <div key={c.id} style={{ border: '1px solid var(--border-color)', borderRadius: '10px', padding: '1rem' }}>
             <strong>{c.subject}</strong>
             <div style={{ color: 'var(--text-secondary)', marginTop: '0.4rem' }}>{c.description} • Status: {c.status}</div>
           </div>
-        ));
+        ))}</div>}</div>;
       default:
         return renderOverview();
     }
@@ -230,21 +257,25 @@ const StudentDashboard = () => {
         </button>
       </div>
 
-      <div className="features-grid" style={{ marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', gap: '0.6rem', overflowX: 'auto', paddingBottom: '0.75rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)' }}>
         {tabs.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
-            className="feature-card"
+            className="btn"
             onClick={() => setActiveTab(key)}
             style={{
-              textAlign: 'left',
               cursor: 'pointer',
               border: activeTab === key ? '1px solid rgba(129, 140, 248, 0.9)' : '1px solid var(--border-color)',
-              background: activeTab === key ? 'rgba(129,140,248,0.08)' : 'var(--bg-card)'
+              background: activeTab === key ? 'var(--primary)' : 'var(--bg-card)',
+              color: activeTab === key ? '#ffffff' : 'var(--text-secondary)',
+              whiteSpace: 'nowrap',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.45rem'
             }}
           >
-            <div className="feature-icon-wrapper"><Icon size={22} /></div>
-            <h3>{label}</h3>
+            <Icon size={17} />
+            {label}
           </button>
         ))}
       </div>

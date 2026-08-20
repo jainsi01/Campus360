@@ -32,6 +32,13 @@ const getProfile = asyncHandler(async (req, res) => {
   });
 });
 
+const updateProfile = asyncHandler(async (req, res) => {
+  const { name, email } = req.body;
+  await UserModel.updateProfile(req.user.id, { name, email });
+  const user = await UserModel.findById(req.user.id);
+  res.status(200).json({ success: true, message: 'Profile updated successfully', data: user });
+});
+
 const changePassword = asyncHandler(async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   await AuthService.changePassword(req.user.id, { currentPassword, newPassword });
@@ -46,5 +53,6 @@ module.exports = {
   register,
   login,
   getProfile,
+  updateProfile,
   changePassword
 };

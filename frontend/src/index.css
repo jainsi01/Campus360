@@ -48,6 +48,20 @@ a {
   text-decoration: none;
 }
 
+/* Windows renders native select popups on a light surface even in dark mode.
+   Explicit option colors keep every dropdown readable throughout the app. */
+select option,
+select optgroup {
+  color: #0f172a;
+  background-color: #ffffff;
+}
+
+select option:checked,
+select option:hover {
+  color: #ffffff;
+  background-color: #2563eb;
+}
+
 #root {
   min-height: 100vh;
   display: flex;
@@ -993,4 +1007,3 @@ h1, h2, h3, h4, h5, h6 {
   opacity: 0.5;
   cursor: not-allowed;
 }
-

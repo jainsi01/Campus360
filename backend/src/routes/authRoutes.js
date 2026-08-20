@@ -42,6 +42,7 @@ router.post(
 // @desc    Get currently logged-in user profile
 // @access  Private
 router.get('/me', authMiddleware, authController.getProfile);
+router.put('/me', [authMiddleware, body('name').trim().notEmpty().withMessage('Name is required'), body('email').isEmail().withMessage('A valid email is required'), validate], authController.updateProfile);
 
 // @route   POST /api/auth/change-password
 // @desc    Change user password
