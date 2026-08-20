@@ -1,6 +1,5 @@
-const dotenv = require('dotenv');
-// Load environment variables before importing app and db
-dotenv.config();
+// Load backend/.env from an absolute path before importing app, routes, or services.
+require('./config/env');
 
 const app = require('./app');
 const { pool } = require('./config/db');

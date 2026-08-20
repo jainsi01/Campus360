@@ -1,3 +1,6 @@
+// Also load configuration here for consumers that import app directly in tests or tooling.
+require('./config/env');
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');

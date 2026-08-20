@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import api from '../../services/api';
 import { MessageSquare, X, Send, Bot, User, Trash2, Loader2, Sparkles, HelpCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -84,14 +84,11 @@ const AIChatbot = () => {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('campus360_token');
-      const response = await axios.post(
-        'http://localhost:5000/api/chat',
-        { message: queryText },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const conversation = messages.filter((message) => message.id !== 'welcome').slice(-16)
+        .map((message) => ({ role: message.sender === 'bot' ? 'assistant' : 'user', content: message.text }));
+      const response = await api.post('/chat', { message: queryText, conversation });
 
-      const botReply = response.data?.data?.message || 'I am sorry, I could not process that request.';
+      const botReply = response.data?.data?.reply || response.data?.data?.message || 'I am sorry, I could not process that request.';
 
       const botMsg = {
         id: (Date.now() + 1).toString(),

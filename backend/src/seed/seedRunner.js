@@ -1,9 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
-const dotenv = require('dotenv');
-
-dotenv.config();
+require('../config/env');
 
 async function runSeed() {
   console.log('--- Campus360 Database Seeder Utility ---');

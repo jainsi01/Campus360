@@ -40,11 +40,18 @@ class InternalServerError extends ApiError {
   }
 }
 
+class ServiceUnavailableError extends ApiError {
+  constructor(message = 'Service temporarily unavailable', errors = []) {
+    super(503, message, 'SERVICE_UNAVAILABLE', errors);
+  }
+}
+
 module.exports = {
   ApiError,
   BadRequestError,
   UnauthorizedError,
   ForbiddenError,
   NotFoundError,
-  InternalServerError
+  InternalServerError,
+  ServiceUnavailableError
 };
