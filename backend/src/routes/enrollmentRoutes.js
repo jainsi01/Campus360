@@ -9,6 +9,7 @@ const router = express.Router();
 
 router.use(authMiddleware);
 
+router.get('/', authorize('ADMIN', 'HOD', 'FACULTY'), enrollmentController.getAllEnrollments);
 router.get('/me', enrollmentController.getMyEnrollments);
 router.get('/subject/:subjectId', authorize('ADMIN', 'HOD', 'FACULTY'), enrollmentController.getSubjectRoster);
 

@@ -61,8 +61,27 @@ const createStudent = asyncHandler(async (req, res) => {
   }
 });
 
+const deleteStudent = asyncHandler(async (req, res) => {
+  const student = await StudentModel.findById(req.params.id);
+  if (!student) throw new NotFoundError(`Student record with ID ${req.params.id} not found`);
+
+  // The schema cascades deletion from the user account to its student profile
+  // and dependent enrollment records, preventing orphaned records.
+  await UserModel.deleteUser(student.user_id);
+  await AuditLogModel.logAction({
+    userId: req.user.id,
+    action: 'DELETE_STUDENT',
+    entityType: 'students',
+    entityId: student.id,
+    description: `Deleted student ${student.name} (${student.student_id})`
+  });
+
+  res.status(200).json({ success: true, message: 'Student deleted successfully' });
+});
+
 module.exports = {
   getStudents,
   getStudentById,
-  createStudent
+  createStudent,
+  deleteStudent
 };

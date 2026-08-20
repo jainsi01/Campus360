@@ -27,7 +27,7 @@ import {
 import { useToast } from '../../components/common/ToastProvider';
 
 const AdminDashboard = () => {
-  const { showSuccess, showError } = useToast();
+  const { success: showSuccess, error: showError } = useToast();
   const [activeTab, setActiveTab] = useState('students');
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -52,6 +52,8 @@ const AdminDashboard = () => {
   const [modalType, setModalType] = useState(''); // 'ADD' or 'EDIT'
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({});
+  const [formError, setFormError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const token = localStorage.getItem('campus360_token');
   const apiHeader = { headers: { Authorization: `Bearer ${token}` } };
@@ -116,6 +118,7 @@ const AdminDashboard = () => {
     setModalType(type);
     setEditingItem(item);
     setFormData(item ? { ...item } : {});
+    setFormError('');
     setModalOpen(true);
     if (type === 'ADD') {
       Promise.all([
@@ -175,11 +178,20 @@ const AdminDashboard = () => {
     setModalOpen(false);
     setEditingItem(null);
     setFormData({});
+    setFormError('');
+    setSubmitting(false);
   };
 
   // Handle Form Submission for CRUD
   const handleSubmitForm = async (e) => {
     e.preventDefault();
+    setFormError('');
+    if (!e.currentTarget.checkValidity()) {
+      setFormError('Please complete every required field before creating this record.');
+      e.currentTarget.reportValidity();
+      return;
+    }
+    setSubmitting(true);
     try {
       let endpoint = '';
       if (activeTab === 'departments') endpoint = 'http://localhost:5000/api/departments';
@@ -204,7 +216,12 @@ const AdminDashboard = () => {
       closeModal();
       fetchData();
     } catch (err) {
-      showError(err.response?.data?.message || 'Operation failed');
+      const validationMessage = err.response?.data?.details?.[0]?.message;
+      const message = validationMessage || err.response?.data?.message || err.message || 'Operation failed. Please check the information and try again.';
+      setFormError(message);
+      showError(message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -507,6 +524,36 @@ const AdminDashboard = () => {
                   <thead><tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}><th style={{ padding: '0.75rem' }}>Code</th><th style={{ padding: '0.75rem' }}>Course</th><th style={{ padding: '0.75rem' }}>Department</th><th style={{ padding: '0.75rem' }}>Duration</th></tr></thead>
                   <tbody>{courses.filter((course) => `${course.name} ${course.code}`.toLowerCase().includes(search.toLowerCase())).map((course) => <tr key={course.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}><td style={{ padding: '0.75rem', fontWeight: 600 }}>{course.code}</td><td style={{ padding: '0.75rem' }}>{course.name}</td><td style={{ padding: '0.75rem' }}>{course.department_name}</td><td style={{ padding: '0.75rem' }}>{course.duration_years} years</td></tr>)}</tbody>
                 </table>
+              ) : activeTab === 'rooms' ? (
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead><tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}><th style={{ padding: '0.75rem' }}>Room</th><th style={{ padding: '0.75rem' }}>Building</th><th style={{ padding: '0.75rem' }}>Capacity</th><th style={{ padding: '0.75rem' }}>Type</th></tr></thead>
+                  <tbody>{rooms.filter((room) => `${room.room_number} ${room.building}`.toLowerCase().includes(search.toLowerCase())).map((room) => <tr key={room.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}><td style={{ padding: '0.75rem', fontWeight: 600 }}>{room.room_number}</td><td style={{ padding: '0.75rem' }}>{room.building}</td><td style={{ padding: '0.75rem' }}>{room.capacity}</td><td style={{ padding: '0.75rem' }}>{room.room_type}</td></tr>)}</tbody>
+                </table>
+              ) : activeTab === 'enrollments' ? (
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead><tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}><th style={{ padding: '0.75rem' }}>Student</th><th style={{ padding: '0.75rem' }}>Roll ID</th><th style={{ padding: '0.75rem' }}>Subject</th><th style={{ padding: '0.75rem' }}>Academic Year</th><th style={{ padding: '0.75rem' }}>Semester</th><th style={{ padding: '0.75rem' }}>Status</th></tr></thead>
+                  <tbody>{enrollments.filter((enrollment) => `${enrollment.student_name} ${enrollment.roll_number} ${enrollment.subject_name}`.toLowerCase().includes(search.toLowerCase())).map((enrollment) => <tr key={enrollment.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}><td style={{ padding: '0.75rem' }}>{enrollment.student_name}</td><td style={{ padding: '0.75rem', fontWeight: 600 }}>{enrollment.roll_number}</td><td style={{ padding: '0.75rem' }}>{enrollment.subject_name} ({enrollment.subject_code})</td><td style={{ padding: '0.75rem' }}>{enrollment.academic_year}</td><td style={{ padding: '0.75rem' }}>{enrollment.semester}</td><td style={{ padding: '0.75rem' }}>{enrollment.status}</td></tr>)}</tbody>
+                </table>
+              ) : activeTab === 'exams' ? (
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead><tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}><th style={{ padding: '0.75rem' }}>Exam</th><th style={{ padding: '0.75rem' }}>Type</th><th style={{ padding: '0.75rem' }}>Academic Year</th><th style={{ padding: '0.75rem' }}>Semester</th><th style={{ padding: '0.75rem' }}>Start Date</th><th style={{ padding: '0.75rem' }}>End Date</th></tr></thead>
+                  <tbody>{exams.filter((exam) => `${exam.name} ${exam.exam_type} ${exam.academic_year}`.toLowerCase().includes(search.toLowerCase())).map((exam) => <tr key={exam.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}><td style={{ padding: '0.75rem', fontWeight: 600 }}>{exam.name}</td><td style={{ padding: '0.75rem' }}>{exam.exam_type}</td><td style={{ padding: '0.75rem' }}>{exam.academic_year}</td><td style={{ padding: '0.75rem' }}>{exam.semester}</td><td style={{ padding: '0.75rem' }}>{exam.start_date ? new Date(exam.start_date).toLocaleDateString() : '—'}</td><td style={{ padding: '0.75rem' }}>{exam.end_date ? new Date(exam.end_date).toLocaleDateString() : '—'}</td></tr>)}</tbody>
+                </table>
+              ) : activeTab === 'timetable' ? (
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead><tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}><th style={{ padding: '0.75rem' }}>Day</th><th style={{ padding: '0.75rem' }}>Time</th><th style={{ padding: '0.75rem' }}>Subject</th><th style={{ padding: '0.75rem' }}>Course</th><th style={{ padding: '0.75rem' }}>Faculty</th><th style={{ padding: '0.75rem' }}>Room</th></tr></thead>
+                  <tbody>{timetables.filter((slot) => `${slot.subject_name} ${slot.course_name} ${slot.faculty_name}`.toLowerCase().includes(search.toLowerCase())).map((slot) => <tr key={slot.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}><td style={{ padding: '0.75rem', fontWeight: 600 }}>{slot.day_of_week}</td><td style={{ padding: '0.75rem' }}>{slot.start_time} – {slot.end_time}</td><td style={{ padding: '0.75rem' }}>{slot.subject_name} ({slot.subject_code})</td><td style={{ padding: '0.75rem' }}>{slot.course_name}</td><td style={{ padding: '0.75rem' }}>{slot.faculty_name}</td><td style={{ padding: '0.75rem' }}>{slot.room_number} ({slot.building})</td></tr>)}</tbody>
+                </table>
+              ) : activeTab === 'fees' ? (
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead><tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}><th style={{ padding: '0.75rem' }}>Student</th><th style={{ padding: '0.75rem' }}>Academic Year</th><th style={{ padding: '0.75rem' }}>Semester</th><th style={{ padding: '0.75rem' }}>Total</th><th style={{ padding: '0.75rem' }}>Paid</th><th style={{ padding: '0.75rem' }}>Due</th><th style={{ padding: '0.75rem' }}>Status</th></tr></thead>
+                  <tbody>{fees.filter((fee) => `${fee.student_name} ${fee.roll_number}`.toLowerCase().includes(search.toLowerCase())).map((fee) => <tr key={fee.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}><td style={{ padding: '0.75rem', fontWeight: 600 }}>{fee.student_name} ({fee.roll_number})</td><td style={{ padding: '0.75rem' }}>{fee.academic_year}</td><td style={{ padding: '0.75rem' }}>{fee.semester}</td><td style={{ padding: '0.75rem' }}>₹{fee.total_amount}</td><td style={{ padding: '0.75rem' }}>₹{fee.paid_amount}</td><td style={{ padding: '0.75rem' }}>₹{fee.due_amount}</td><td style={{ padding: '0.75rem' }}>{fee.status}</td></tr>)}</tbody>
+                </table>
+              ) : activeTab === 'notices' ? (
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead><tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}><th style={{ padding: '0.75rem' }}>Title</th><th style={{ padding: '0.75rem' }}>Description</th><th style={{ padding: '0.75rem' }}>Published</th><th style={{ padding: '0.75rem' }}>Publisher</th><th style={{ padding: '0.75rem' }}>Audience</th></tr></thead>
+                  <tbody>{notices.filter((notice) => `${notice.title} ${notice.description}`.toLowerCase().includes(search.toLowerCase())).map((notice) => <tr key={notice.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}><td style={{ padding: '0.75rem', fontWeight: 600 }}>{notice.title}</td><td style={{ padding: '0.75rem' }}>{notice.description}</td><td style={{ padding: '0.75rem' }}>{notice.publish_date ? new Date(notice.publish_date).toLocaleDateString() : '—'}</td><td style={{ padding: '0.75rem' }}>{notice.publisher_name}</td><td style={{ padding: '0.75rem' }}>{notice.target_role || 'ALL'}</td></tr>)}</tbody>
+                </table>
               ) : (
                 <div style={{ textAlign: 'center', padding: '2rem' }}>
                   <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
@@ -531,7 +578,12 @@ const AdminDashboard = () => {
               <button onClick={closeModal} className="icon-btn-subtle"><X size={20} /></button>
             </div>
 
-            <form onSubmit={handleSubmitForm}>
+            <form onSubmit={handleSubmitForm} noValidate>
+              {formError && (
+                <div role="alert" style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.45)', borderRadius: '8px', color: '#fecaca', padding: '0.75rem 1rem', marginBottom: '1rem' }}>
+                  {formError}
+                </div>
+              )}
               {activeTab === 'departments' && (
                 <>
                   <div className="form-group">
@@ -649,8 +701,8 @@ const AdminDashboard = () => {
               )}
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '2rem' }}>
-                <button type="button" onClick={closeModal} className="btn btn-secondary">Cancel</button>
-                <button type="submit" className="btn btn-primary">{modalType === 'ADD' ? 'Create' : 'Save Changes'}</button>
+                <button type="button" onClick={closeModal} className="btn btn-secondary" disabled={submitting}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? 'Saving...' : modalType === 'ADD' ? 'Create' : 'Save Changes'}</button>
               </div>
             </form>
           </div>

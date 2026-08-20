@@ -35,4 +35,6 @@ router.post('/', [
 // @access  Private (ADMIN, HOD, FACULTY, STUDENT)
 router.get('/:id', authorize('ADMIN', 'HOD'), studentController.getStudentById);
 
+router.delete('/:id', authorize('ADMIN'), studentController.deleteStudent);
+
 module.exports = router;

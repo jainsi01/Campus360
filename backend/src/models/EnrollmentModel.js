@@ -1,6 +1,25 @@
 const { query } = require('../config/db');
 
 class EnrollmentModel {
+  static async getAll({ academicYear, studentId, subjectId } = {}) {
+    let sql = `
+      SELECT e.id, e.student_id, e.subject_id, e.academic_year, e.semester, e.status, e.created_at,
+             s.student_id AS roll_number, u.name AS student_name,
+             sub.name AS subject_name, sub.code AS subject_code
+      FROM enrollments e
+      JOIN students s ON s.id = e.student_id
+      JOIN users u ON u.id = s.user_id
+      JOIN subjects sub ON sub.id = e.subject_id
+      WHERE 1 = 1
+    `;
+    const params = [];
+    if (academicYear) { sql += ' AND e.academic_year = ?'; params.push(academicYear); }
+    if (studentId) { sql += ' AND e.student_id = ?'; params.push(studentId); }
+    if (subjectId) { sql += ' AND e.subject_id = ?'; params.push(subjectId); }
+    sql += ' ORDER BY e.created_at DESC';
+    return query(sql, params);
+  }
+
   static async isStudentEnrolledInSubject(studentId, subjectId) {
     const rows = await query(
       `SELECT id FROM enrollments WHERE student_id = ? AND subject_id = ? AND status = 'ENROLLED' LIMIT 1`,

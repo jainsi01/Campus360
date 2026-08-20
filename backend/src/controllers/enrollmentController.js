@@ -2,6 +2,11 @@ const EnrollmentModel = require('../models/EnrollmentModel');
 const StudentModel = require('../models/StudentModel');
 const asyncHandler = require('../utils/asyncHandler');
 
+const getAllEnrollments = asyncHandler(async (req, res) => {
+  const enrollments = await EnrollmentModel.getAll(req.query);
+  res.status(200).json({ success: true, data: enrollments });
+});
+
 const getSubjectRoster = asyncHandler(async (req, res) => {
   const { subjectId } = req.params;
   const { academicYear } = req.query;
@@ -39,6 +44,7 @@ const enrollStudent = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+  getAllEnrollments,
   getSubjectRoster,
   getMyEnrollments,
   enrollStudent
