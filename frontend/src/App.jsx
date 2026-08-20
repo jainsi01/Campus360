@@ -354,7 +354,31 @@ function App() {
                   }
                 />
                 <Route
+                  path="/hod/subjects"
+                  element={
+                    <ProtectedRoute allowedRoles={['HOD', 'ADMIN']}>
+                      <HodDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/hod/attendance"
+                  element={
+                    <ProtectedRoute allowedRoles={['HOD', 'ADMIN']}>
+                      <HodDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/hod/assignments"
+                  element={
+                    <ProtectedRoute allowedRoles={['HOD', 'ADMIN']}>
+                      <HodDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/hod/notices"
                   element={
                     <ProtectedRoute allowedRoles={['HOD', 'ADMIN']}>
                       <HodDashboard />

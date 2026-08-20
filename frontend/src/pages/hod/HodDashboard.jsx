@@ -71,7 +71,10 @@ const HodDashboard = () => {
   const getTabFromPath = (pathname) => {
     if (pathname.includes('/hod/students')) return 'students';
     if (pathname.includes('/hod/faculty')) return 'faculty';
+    if (pathname.includes('/hod/subjects')) return 'subjects';
     if (pathname.includes('/hod/attendance')) return 'attendance';
+    if (pathname.includes('/hod/assignments')) return 'assignments';
+    if (pathname.includes('/hod/notices')) return 'notices';
     if (pathname.includes('/hod/analytics') || pathname.includes('/hod/academic')) return 'academic';
     if (pathname.includes('/hod/results')) return 'results';
     if (pathname.includes('/hod/reports')) return 'reports';
