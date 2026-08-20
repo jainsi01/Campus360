@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { ShieldCheck, User, Mail, LogOut, CheckCircle, Award, BookOpen, Clock, Building2, GraduationCap, Users, ClipboardList, DoorOpen, BookMarked, BarChart3, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 
 const getDisplayName = (item) => {
   if (!item) return 'Unknown';
@@ -69,6 +69,11 @@ const Dashboard = () => {
       mounted = false;
     };
   }, [isAdmin]);
+
+  // Students must use their role-specific dashboard, never the shared/admin portal.
+  if (user?.role === 'STUDENT') {
+    return <Navigate to="/student/dashboard" replace />;
+  }
 
   const adminStats = [
     { label: 'Departments', value: adminData.departments.length, icon: Building2 },
