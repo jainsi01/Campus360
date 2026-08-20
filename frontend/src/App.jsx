@@ -12,7 +12,11 @@ import {
   User, 
   LogOut, 
   LayoutDashboard,
-  BarChart3
+  BarChart3,
+  Sun,
+  Moon,
+  Menu,
+  X
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/common/ToastProvider';
@@ -27,6 +31,7 @@ import UniversityModules from './pages/university/UniversityModules';
 import AnalyticsDashboard from './pages/analytics/AnalyticsDashboard';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import AIChatbot from './components/common/AIChatbot';
+import heroIllustration from './assets/hero.png';
 
 // Navigation Link Helper (adds 'active' class depending on current path)
 const NavLink = ({ to, children, className = 'nav-link' }) => {
@@ -42,6 +47,13 @@ const NavLink = ({ to, children, className = 'nav-link' }) => {
 // Navbar Component
 const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
+  const [theme, setTheme] = useState(() => localStorage.getItem('campus360-theme') || 'dark');
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('campus360-theme', theme);
+  }, [theme]);
 
   return (
     <nav className="navbar">
@@ -49,7 +61,15 @@ const Navbar = () => {
         <img src="/campus360-logo.svg" alt="Campus360 logo" className="nav-brand-logo" />
         <span>Campus360</span>
       </Link>
-      <ul className="nav-links">
+      <button
+        className="mobile-menu-toggle"
+        onClick={() => setMenuOpen((open) => !open)}
+        aria-label="Toggle navigation menu"
+        aria-expanded={menuOpen}
+      >
+        {menuOpen ? <X size={20} /> : <Menu size={20} />}
+      </button>
+      <ul className={`nav-links ${menuOpen ? 'open' : ''}`}>
         <li><NavLink to="/">Home</NavLink></li>
         <li><NavLink to="/about">About</NavLink></li>
         <li><NavLink to="/contact">Contact</NavLink></li>
@@ -85,6 +105,17 @@ const Navbar = () => {
         ) : (
           <li><NavLink to="/login" className="nav-btn">Sign In</NavLink></li>
         )}
+        <li>
+          <button
+            className="theme-toggle"
+            onClick={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          >
+            {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+            <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
+          </button>
+        </li>
       </ul>
     </nav>
   );
@@ -113,19 +144,25 @@ const LandingPage = () => {
   return (
     <div className="landing-page">
       <header className="hero-section">
-        <div className="hero-badge">Campus360 Management Suite</div>
-        <h1 className="hero-title">Manage Your Entire University in One Place</h1>
-        <p className="hero-description">
-          A production-quality ERP for students, faculty, heads of departments, and administrators. 
-          Streamline courses, schedules, marks, attendance, fees, notices, and academic planning.
-        </p>
-        <div className="hero-actions">
-          {isAuthenticated ? (
-            <Link to="/dashboard" className="btn btn-primary">Go to Dashboard</Link>
-          ) : (
-            <Link to="/login" className="btn btn-primary">Go to Portal</Link>
-          )}
-          <Link to="/api-test" className="btn btn-secondary">Check Connection</Link>
+        <div className="hero-copy">
+          <div className="hero-badge">Campus360 Management Suite</div>
+          <h1 className="hero-title">Your campus, thoughtfully connected.</h1>
+          <p className="hero-description">
+            A calm, capable workspace for students, faculty, department heads, and administrators to manage every academic moment.
+          </p>
+          <div className="hero-actions">
+            {isAuthenticated ? (
+              <Link to="/dashboard" className="btn btn-primary">Go to Dashboard</Link>
+            ) : (
+              <Link to="/login" className="btn btn-primary">Enter Campus360</Link>
+            )}
+            <Link to="/api-test" className="btn btn-secondary">Check Connection</Link>
+          </div>
+        </div>
+        <div className="hero-visual" aria-hidden="true">
+          <div className="hero-orbit hero-orbit-one" />
+          <div className="hero-orbit hero-orbit-two" />
+          <img src={heroIllustration} alt="" />
         </div>
       </header>
 
