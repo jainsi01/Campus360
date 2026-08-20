@@ -40,8 +40,46 @@ const createStudyMaterial = asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, message: 'Study material uploaded successfully', data: { id: materialId } });
 });
 
+const updateStudyMaterial = asyncHandler(async (req, res) => {
+  const { title, description, fileUrl } = req.body;
+  const faculty = await FacultyModel.findByUserId(req.user.id);
+  if (!faculty) throw new BadRequestError('Faculty profile not found');
+
+  const existing = await StudyMaterialModel.getById(req.params.id);
+  if (!existing) throw new NotFoundError('Study material not found');
+  if (Number(existing.faculty_id) !== Number(faculty.id)) {
+    throw new BadRequestError('You can only edit study materials you uploaded');
+  }
+
+  await StudyMaterialModel.update({
+    id: req.params.id,
+    facultyId: faculty.id,
+    title: title || existing.title,
+    description: description ?? existing.description,
+    fileUrl: fileUrl || existing.file_url
+  });
+
+  res.status(200).json({ success: true, message: 'Study material updated successfully' });
+});
+
+const deleteStudyMaterial = asyncHandler(async (req, res) => {
+  const faculty = await FacultyModel.findByUserId(req.user.id);
+  if (!faculty) throw new BadRequestError('Faculty profile not found');
+
+  const existing = await StudyMaterialModel.getById(req.params.id);
+  if (!existing) throw new NotFoundError('Study material not found');
+  if (Number(existing.faculty_id) !== Number(faculty.id)) {
+    throw new BadRequestError('You can only delete study materials you uploaded');
+  }
+
+  await StudyMaterialModel.delete(req.params.id, faculty.id);
+  res.status(200).json({ success: true, message: 'Study material deleted successfully' });
+});
+
 module.exports = {
   getMyStudyMaterials,
   getStudyMaterialsForSubject,
-  createStudyMaterial
+  createStudyMaterial,
+  updateStudyMaterial,
+  deleteStudyMaterial
 };

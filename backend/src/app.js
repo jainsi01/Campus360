@@ -29,9 +29,10 @@ if (process.env.NODE_ENV !== 'test') {
 // 4. Rate Limiter Middleware
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200, // Limit each IP to 200 requests per windowMs
+  max: 3000, // Increased limit for operational local development
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => process.env.NODE_ENV === 'development' || req.ip === '127.0.0.1' || req.ip === '::1',
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again after 15 minutes.',
@@ -68,6 +69,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const complaintRoutes = require('./routes/complaintRoutes');
 const auditLogRoutes = require('./routes/auditLogRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -89,6 +91,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/complaints', complaintRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/chat', chatRoutes);
 
 // 6. 404 Route Handler
 app.use((req, res, next) => {
@@ -106,7 +109,7 @@ app.use((err, req, res, next) => {
 
   const errorResponse = {
     success: false,
-    message: statusCode === 500 ? 'Something went wrong' : err.message,
+    message: err.message || 'Something went wrong',
     error: err.errorCode || 'INTERNAL_SERVER_ERROR'
   };
 

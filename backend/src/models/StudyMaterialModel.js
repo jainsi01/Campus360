@@ -28,6 +28,17 @@ class StudyMaterialModel {
     return await query(sql, [subjectId]);
   }
 
+  static async getById(id) {
+    const sql = `
+      SELECT sm.id, sm.subject_id, sm.faculty_id, sm.title, sm.description, sm.file_url, sm.created_at
+      FROM study_materials sm
+      WHERE sm.id = ?
+      LIMIT 1
+    `;
+    const rows = await query(sql, [id]);
+    return rows.length ? rows[0] : null;
+  }
+
   static async create({ subjectId, facultyId, title, description, fileUrl }) {
     const sql = `
       INSERT INTO study_materials (subject_id, faculty_id, title, description, file_url)
@@ -35,6 +46,22 @@ class StudyMaterialModel {
     `;
     const result = await query(sql, [subjectId, facultyId, title, description || null, fileUrl]);
     return result.insertId;
+  }
+
+  static async update({ id, facultyId, title, description, fileUrl }) {
+    const sql = `
+      UPDATE study_materials
+      SET title = ?, description = ?, file_url = ?
+      WHERE id = ? AND faculty_id = ?
+    `;
+    const res = await query(sql, [title, description || null, fileUrl, id, facultyId]);
+    return res.affectedRows > 0;
+  }
+
+  static async delete(id, facultyId) {
+    const sql = `DELETE FROM study_materials WHERE id = ? AND faculty_id = ?`;
+    const res = await query(sql, [id, facultyId]);
+    return res.affectedRows > 0;
   }
 }
 

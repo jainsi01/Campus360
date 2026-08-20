@@ -173,22 +173,12 @@ const UniversityModules = () => {
     setLoading(true);
     setError('');
     try {
-      // Fetch references
-      const [cRes, subRes, fRes, rRes, sRes] = await Promise.all([
+      const results = await Promise.allSettled([
         api.get('/courses'),
         api.get('/subjects'),
         api.get('/faculty'),
         api.get('/rooms'),
-        api.get('/students')
-      ]);
-      setCourses(cRes.data?.data || []);
-      setSubjects(subRes.data?.data || []);
-      setFaculty(fRes.data?.data || []);
-      setRooms(rRes.data?.data || []);
-      setStudents(sRes.data?.data || []);
-
-      // Fetch module data
-      const [ttRes, exRes, exSchedRes, feeRes, notRes, ntfRes, cmpRes, audRes] = await Promise.all([
+        api.get('/students'),
         api.get('/timetable'),
         api.get('/exams'),
         api.get('/exams/schedule'),
@@ -199,14 +189,21 @@ const UniversityModules = () => {
         api.get('/audit-logs')
       ]);
 
-      setTimetable(ttRes.data?.data || []);
-      setExams(exRes.data?.data || []);
-      setExamSchedule(exSchedRes.data?.data || []);
-      setFees(feeRes.data?.data || []);
-      setNotices(notRes.data?.data || []);
-      setNotifications(ntfRes.data?.data || []);
-      setComplaints(cmpRes.data?.data || []);
-      setAuditLogs(audRes.data?.data || []);
+      const getData = (idx) => (results[idx].status === 'fulfilled' ? results[idx].value.data?.data || [] : []);
+
+      setCourses(getData(0));
+      setSubjects(getData(1));
+      setFaculty(getData(2));
+      setRooms(getData(3));
+      setStudents(getData(4));
+      setTimetable(getData(5));
+      setExams(getData(6));
+      setExamSchedule(getData(7));
+      setFees(getData(8));
+      setNotices(getData(9));
+      setNotifications(getData(10));
+      setComplaints(getData(11));
+      setAuditLogs(getData(12));
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load university module data.');
     } finally {

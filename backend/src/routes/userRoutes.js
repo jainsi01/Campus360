@@ -33,4 +33,14 @@ router.patch(
   userController.toggleUserStatus
 );
 
+router.put(
+  '/:id/status',
+  [
+    authorize('ADMIN'),
+    body('status').isIn(['ACTIVE', 'INACTIVE']).withMessage('Status must be ACTIVE or INACTIVE'),
+    validate
+  ],
+  userController.toggleUserStatus
+);
+
 module.exports = router;

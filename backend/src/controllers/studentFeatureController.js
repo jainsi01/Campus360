@@ -376,6 +376,41 @@ const createComplaint = asyncHandler(async (req, res) => {
   });
 });
 
+const updateComplaint = asyncHandler(async (req, res) => {
+  const student = await getStudentRecord(req.user.id);
+  if (!student) throw new BadRequestError('Student profile not found.');
+
+  const complaintId = req.params.id;
+  const { subject, description } = req.body;
+
+  const existing = await query(`SELECT * FROM complaints WHERE id = ? AND student_id = ? LIMIT 1`, [complaintId, student.id]);
+  if (!existing || existing.length === 0) {
+    throw new BadRequestError('Complaint not found or unauthorized');
+  }
+
+  if (existing[0].status !== 'OPEN') {
+    throw new BadRequestError('Cannot update complaint after it is in progress or resolved');
+  }
+
+  await query(`UPDATE complaints SET subject = ?, description = ? WHERE id = ?`, [subject || existing[0].subject, description || existing[0].description, complaintId]);
+  const updated = await query(`SELECT * FROM complaints WHERE id = ? LIMIT 1`, [complaintId]);
+  res.status(200).json({ success: true, message: 'Complaint updated successfully.', data: updated[0] });
+});
+
+const deleteComplaint = asyncHandler(async (req, res) => {
+  const student = await getStudentRecord(req.user.id);
+  if (!student) throw new BadRequestError('Student profile not found.');
+
+  const complaintId = req.params.id;
+  const existing = await query(`SELECT * FROM complaints WHERE id = ? AND student_id = ? LIMIT 1`, [complaintId, student.id]);
+  if (!existing || existing.length === 0) {
+    throw new BadRequestError('Complaint not found or unauthorized');
+  }
+
+  await query(`DELETE FROM complaints WHERE id = ?`, [complaintId]);
+  res.status(200).json({ success: true, message: 'Complaint cancelled successfully.' });
+});
+
 module.exports = {
   getStudentDashboard,
   getMySubjects,
@@ -391,5 +426,7 @@ module.exports = {
   getMyNotices,
   getMyNotifications,
   getMyComplaints,
-  createComplaint
+  createComplaint,
+  updateComplaint,
+  deleteComplaint
 };

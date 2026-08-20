@@ -17,6 +17,7 @@ router.use(authMiddleware);
 
 router.get('/assigned-subjects', authorize('FACULTY'), facultySubjectController.getMyAssignedSubjects);
 
+
 router.get('/attendance', authorize('FACULTY'), attendanceController.getAttendanceBySubjectAndDate);
 router.post('/attendance', authorize('FACULTY'), attendanceController.submitAttendanceBatch);
 
@@ -35,6 +36,8 @@ router.post(
   ],
   assignmentController.createAssignment
 );
+router.put('/assignments/:id', authorize('FACULTY'), assignmentController.updateAssignment);
+router.delete('/assignments/:id', authorize('FACULTY'), assignmentController.deleteAssignment);
 
 router.get('/assignments/:assignmentId/submissions', authorize('FACULTY'), submissionController.getSubmissionsForAssignment);
 router.post(
@@ -60,6 +63,8 @@ router.post(
   ],
   studyMaterialController.createStudyMaterial
 );
+router.put('/study-materials/:id', authorize('FACULTY'), studyMaterialController.updateStudyMaterial);
+router.delete('/study-materials/:id', authorize('FACULTY'), studyMaterialController.deleteStudyMaterial);
 
 router.get('/marks/subject/:subjectId', authorize('FACULTY'), marksController.getMarksForSubject);
 router.put('/marks/:id', authorize('FACULTY'), marksController.updateMarks);

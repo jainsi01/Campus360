@@ -19,12 +19,14 @@ import { ToastProvider } from './components/common/ToastProvider';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/auth/LoginPage';
 import Dashboard from './pages/Dashboard';
+import AdminDashboard from './pages/admin/AdminDashboard';
 import FacultyDashboard from './pages/faculty/FacultyDashboard';
 import StudentDashboard from './pages/student/StudentDashboard';
 import HodDashboard from './pages/hod/HodDashboard';
 import UniversityModules from './pages/university/UniversityModules';
 import AnalyticsDashboard from './pages/analytics/AnalyticsDashboard';
 import UnauthorizedPage from './pages/UnauthorizedPage';
+import AIChatbot from './components/common/AIChatbot';
 
 // Navigation Link Helper (adds 'active' class depending on current path)
 const NavLink = ({ to, children, className = 'nav-link' }) => {
@@ -323,7 +325,7 @@ function App() {
                   path="/admin/dashboard"
                   element={
                     <ProtectedRoute allowedRoles={['ADMIN']}>
-                      <Dashboard />
+                      <AdminDashboard />
                     </ProtectedRoute>
                   }
                 />
@@ -458,6 +460,7 @@ function App() {
               </Routes>
             </main>
             <Footer />
+            <AIChatbot />
           </div>
         </AuthProvider>
       </ToastProvider>

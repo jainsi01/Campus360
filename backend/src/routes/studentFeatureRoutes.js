@@ -4,6 +4,7 @@ const authMiddleware = require('../middlewares/authMiddleware');
 const { authorize } = require('../middlewares/roleMiddleware');
 const validate = require('../middlewares/validateMiddleware');
 const studentFeatureController = require('../controllers/studentFeatureController');
+const submissionController = require('../controllers/submissionController');
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -13,6 +14,10 @@ router.get('/subjects', authorize('STUDENT'), studentFeatureController.getMySubj
 router.get('/attendance', authorize('STUDENT'), studentFeatureController.getMyAttendance);
 router.get('/assignments', authorize('STUDENT'), studentFeatureController.getMyAssignments);
 router.get('/submissions', authorize('STUDENT'), studentFeatureController.getMySubmissions);
+router.post('/submissions', authorize('STUDENT'), submissionController.submitAssignment);
+router.put('/submissions/:id', authorize('STUDENT'), submissionController.updateSubmission);
+router.delete('/submissions/:id', authorize('STUDENT'), submissionController.revokeSubmission);
+
 router.get('/materials', authorize('STUDENT'), studentFeatureController.getMyMaterials);
 router.get('/marks', authorize('STUDENT'), studentFeatureController.getMyMarks);
 router.get('/results', authorize('STUDENT'), studentFeatureController.getMyResults);
@@ -33,5 +38,7 @@ router.post(
   ],
   studentFeatureController.createComplaint
 );
+router.put('/complaints/:id', authorize('STUDENT'), studentFeatureController.updateComplaint);
+router.delete('/complaints/:id', authorize('STUDENT'), studentFeatureController.deleteComplaint);
 
 module.exports = router;

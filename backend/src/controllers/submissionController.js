@@ -78,9 +78,52 @@ const getMySubmissions = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: submissions });
 });
 
+const updateSubmission = asyncHandler(async (req, res) => {
+  const { submissionUrl } = req.body;
+  if (!submissionUrl) throw new BadRequestError('submissionUrl is required');
+
+  const student = await StudentModel.findByUserId(req.user.id);
+  if (!student) throw new BadRequestError('Student profile not found');
+
+  const submission = await SubmissionModel.getById(req.params.id);
+  if (!submission) throw new NotFoundError('Submission not found');
+  if (Number(submission.student_id) !== Number(student.id)) {
+    throw new ForbiddenError('You can only update your own submission');
+  }
+
+  const assignment = await AssignmentModel.getById(submission.assignment_id);
+  if (new Date(assignment.deadline) < new Date()) {
+    throw new ForbiddenError('Cannot update submission after assignment deadline has passed');
+  }
+
+  await SubmissionModel.updateSubmission({ id: req.params.id, studentId: student.id, submissionUrl });
+  res.status(200).json({ success: true, message: 'Submission updated successfully' });
+});
+
+const revokeSubmission = asyncHandler(async (req, res) => {
+  const student = await StudentModel.findByUserId(req.user.id);
+  if (!student) throw new BadRequestError('Student profile not found');
+
+  const submission = await SubmissionModel.getById(req.params.id);
+  if (!submission) throw new NotFoundError('Submission not found');
+  if (Number(submission.student_id) !== Number(student.id)) {
+    throw new ForbiddenError('You can only revoke your own submission');
+  }
+
+  const assignment = await AssignmentModel.getById(submission.assignment_id);
+  if (new Date(assignment.deadline) < new Date()) {
+    throw new ForbiddenError('Cannot revoke submission after assignment deadline has passed');
+  }
+
+  await SubmissionModel.deleteSubmission(req.params.id, student.id);
+  res.status(200).json({ success: true, message: 'Submission revoked successfully' });
+});
+
 module.exports = {
   getSubmissionsForAssignment,
   submitAssignment,
   gradeSubmission,
-  getMySubmissions
+  getMySubmissions,
+  updateSubmission,
+  revokeSubmission
 };

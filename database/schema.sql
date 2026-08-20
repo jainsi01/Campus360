@@ -195,6 +195,8 @@ CREATE TABLE assignments (
     faculty_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
+    instructions TEXT NULL,
+    max_marks INT NOT NULL DEFAULT 100,
     deadline DATETIME NOT NULL,
     attachment_url VARCHAR(255) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

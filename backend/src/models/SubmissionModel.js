@@ -64,6 +64,22 @@ class SubmissionModel {
     await query(sql, [marks, feedback || null, status || 'GRADED', id]);
     return true;
   }
+
+  static async updateSubmission({ id, studentId, submissionUrl }) {
+    const sql = `
+      UPDATE submissions
+      SET submission_url = ?, submitted_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND student_id = ?
+    `;
+    const res = await query(sql, [submissionUrl, id, studentId]);
+    return res.affectedRows > 0;
+  }
+
+  static async deleteSubmission(id, studentId) {
+    const sql = `DELETE FROM submissions WHERE id = ? AND student_id = ?`;
+    const res = await query(sql, [id, studentId]);
+    return res.affectedRows > 0;
+  }
 }
 
 module.exports = SubmissionModel;
