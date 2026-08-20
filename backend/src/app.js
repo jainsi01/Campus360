@@ -40,13 +40,55 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// 5. Basic Health Check Route
+// 5. Basic Health Check & API Routes
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Campus360 API is running'
   });
 });
+
+const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
+const departmentRoutes = require('./routes/departmentRoutes');
+const studentRoutes = require('./routes/studentRoutes');
+const facultyRoutes = require('./routes/facultyRoutes');
+const courseRoutes = require('./routes/courseRoutes');
+const subjectRoutes = require('./routes/subjectRoutes');
+const roomRoutes = require('./routes/roomRoutes');
+const enrollmentRoutes = require('./routes/enrollmentRoutes');
+const facultyFeatureRoutes = require('./routes/facultyFeatureRoutes');
+const studentFeatureRoutes = require('./routes/studentFeatureRoutes');
+const hodFeatureRoutes = require('./routes/hodFeatureRoutes');
+const timetableRoutes = require('./routes/timetableRoutes');
+const examRoutes = require('./routes/examRoutes');
+const feeRoutes = require('./routes/feeRoutes');
+const noticeRoutes = require('./routes/noticeRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const complaintRoutes = require('./routes/complaintRoutes');
+const auditLogRoutes = require('./routes/auditLogRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
+
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/departments', departmentRoutes);
+app.use('/api/students', studentRoutes);
+app.use('/api/faculty', facultyRoutes);
+app.use('/api/courses', courseRoutes);
+app.use('/api/subjects', subjectRoutes);
+app.use('/api/rooms', roomRoutes);
+app.use('/api/enrollments', enrollmentRoutes);
+app.use('/api/faculty-features', facultyFeatureRoutes);
+app.use('/api/student-features', studentFeatureRoutes);
+app.use('/api/hod-features', hodFeatureRoutes);
+app.use('/api/timetable', timetableRoutes);
+app.use('/api/exams', examRoutes);
+app.use('/api/fees', feeRoutes);
+app.use('/api/notices', noticeRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/complaints', complaintRoutes);
+app.use('/api/audit-logs', auditLogRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // 6. 404 Route Handler
 app.use((req, res, next) => {
@@ -67,12 +109,6 @@ app.use((err, req, res, next) => {
     message: statusCode === 500 ? 'Something went wrong' : err.message,
     error: err.errorCode || 'INTERNAL_SERVER_ERROR'
   };
-
-  // Development mode displays detailed stack and error traces
-  if (process.env.NODE_ENV === 'development') {
-    errorResponse.details = err.message;
-    errorResponse.stack = err.stack;
-  }
 
   res.status(statusCode).json(errorResponse);
 });

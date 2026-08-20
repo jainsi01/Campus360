@@ -1,7 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { School, BookOpen, Clock, Award, ShieldAlert, CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react';
+import { 
+  School, 
+  BookOpen, 
+  Clock, 
+  Award, 
+  CheckCircle, 
+  AlertTriangle, 
+  RefreshCw, 
+  User, 
+  LogOut, 
+  LayoutDashboard,
+  BarChart3
+} from 'lucide-react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { ToastProvider } from './components/common/ToastProvider';
+import ProtectedRoute from './components/ProtectedRoute';
+import LoginPage from './pages/auth/LoginPage';
+import Dashboard from './pages/Dashboard';
+import FacultyDashboard from './pages/faculty/FacultyDashboard';
+import StudentDashboard from './pages/student/StudentDashboard';
+import HodDashboard from './pages/hod/HodDashboard';
+import UniversityModules from './pages/university/UniversityModules';
+import AnalyticsDashboard from './pages/analytics/AnalyticsDashboard';
+import UnauthorizedPage from './pages/UnauthorizedPage';
 
 // Navigation Link Helper (adds 'active' class depending on current path)
 const NavLink = ({ to, children, className = 'nav-link' }) => {
@@ -16,10 +39,12 @@ const NavLink = ({ to, children, className = 'nav-link' }) => {
 
 // Navbar Component
 const Navbar = () => {
+  const { user, isAuthenticated, logout } = useAuth();
+
   return (
     <nav className="navbar">
       <Link to="/" className="nav-brand">
-        <School size={28} />
+        <img src="/campus360-logo.svg" alt="Campus360 logo" className="nav-brand-logo" />
         <span>Campus360</span>
       </Link>
       <ul className="nav-links">
@@ -27,7 +52,37 @@ const Navbar = () => {
         <li><NavLink to="/about">About</NavLink></li>
         <li><NavLink to="/contact">Contact</NavLink></li>
         <li><NavLink to="/api-test">API Health</NavLink></li>
-        <li><NavLink to="/login" className="nav-btn">Sign In</NavLink></li>
+
+        {isAuthenticated ? (
+          <>
+            <li>
+              <NavLink to="/dashboard" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <LayoutDashboard size={16} />
+                Dashboard
+              </NavLink>
+            </li>
+            {user?.role === 'ADMIN' && (
+              <li>
+                <NavLink to="/analytics" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <BarChart3 size={16} />
+                  Analytics
+                </NavLink>
+              </li>
+            )}
+            <li>
+              <button 
+                onClick={logout} 
+                className="nav-btn" 
+                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', border: 'none', cursor: 'pointer' }}
+              >
+                <LogOut size={16} />
+                Sign Out ({user?.name?.split(' ')[0]})
+              </button>
+            </li>
+          </>
+        ) : (
+          <li><NavLink to="/login" className="nav-btn">Sign In</NavLink></li>
+        )}
       </ul>
     </nav>
   );
@@ -49,8 +104,10 @@ const Footer = () => {
   );
 };
 
-// Landing Page Page Component
+// Landing Page Component
 const LandingPage = () => {
+  const { isAuthenticated } = useAuth();
+
   return (
     <div className="landing-page">
       <header className="hero-section">
@@ -61,7 +118,11 @@ const LandingPage = () => {
           Streamline courses, schedules, marks, attendance, fees, notices, and academic planning.
         </p>
         <div className="hero-actions">
-          <Link to="/login" className="btn btn-primary">Go to Portal</Link>
+          {isAuthenticated ? (
+            <Link to="/dashboard" className="btn btn-primary">Go to Dashboard</Link>
+          ) : (
+            <Link to="/login" className="btn btn-primary">Go to Portal</Link>
+          )}
           <Link to="/api-test" className="btn btn-secondary">Check Connection</Link>
         </div>
       </header>
@@ -131,57 +192,6 @@ const Contact = () => {
         <p style={{ fontWeight: 600 }}>System Support Desk</p>
         <p style={{ color: 'var(--text-secondary)', margin: '0.5rem 0' }}>Email: admin@campus360.edu</p>
         <p style={{ color: 'var(--text-secondary)' }}>Phone: +1 (555) 019-3600</p>
-      </div>
-    </div>
-  );
-};
-
-// Login Page Component
-const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    alert(`Phase 1 Prototype: Authentication mock for ${email}. Full JWT authorization will be implemented in Phase 4.`);
-  };
-
-  return (
-    <div className="auth-page">
-      <div className="auth-card">
-        <div className="auth-header">
-          <h2>Welcome Back</h2>
-          <p>Sign in to access your Campus360 portal</p>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label className="form-label" htmlFor="email">Email Address</label>
-            <input
-              type="email"
-              id="email"
-              className="form-input"
-              placeholder="e.g. admin@campus360.edu"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <div className="form-group">
-            <label className="form-label" htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              className="form-input"
-              placeholder="••••••••"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>
-            Sign In
-          </button>
-        </form>
       </div>
     </div>
   );
@@ -276,23 +286,181 @@ const ApiTest = () => {
   );
 };
 
-// Main App Router Config
+// Main App Router Config wrapped in AuthProvider
 function App() {
   return (
     <BrowserRouter>
-      <div className="app-container">
-        <Navbar />
-        <main className="main-content">
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/api-test" element={<ApiTest />} />
-          </Routes>
-        </main>
-        <Footer />
-      </div>
+      <ToastProvider>
+        <AuthProvider>
+          <div className="app-container">
+            <Navbar />
+            <main className="main-content">
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/api-test" element={<ApiTest />} />
+                <Route path="/unauthorized" element={<UnauthorizedPage />} />
+
+                <Route
+                  path="/analytics"
+                  element={
+                    <ProtectedRoute allowedRoles={['ADMIN']}>
+                      <AnalyticsDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/dashboard"
+                  element={
+                    <ProtectedRoute allowedRoles={['ADMIN']}>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/hod/dashboard"
+                  element={
+                    <ProtectedRoute allowedRoles={['HOD', 'ADMIN']}>
+                      <HodDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/hod/students"
+                  element={
+                    <ProtectedRoute allowedRoles={['HOD', 'ADMIN']}>
+                      <HodDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/hod/faculty"
+                  element={
+                    <ProtectedRoute allowedRoles={['HOD', 'ADMIN']}>
+                      <HodDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/hod/attendance"
+                  element={
+                    <ProtectedRoute allowedRoles={['HOD', 'ADMIN']}>
+                      <HodDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/hod/analytics"
+                  element={
+                    <ProtectedRoute allowedRoles={['HOD', 'ADMIN']}>
+                      <HodDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/hod/results"
+                  element={
+                    <ProtectedRoute allowedRoles={['HOD', 'ADMIN']}>
+                      <HodDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/hod/reports"
+                  element={
+                    <ProtectedRoute allowedRoles={['HOD', 'ADMIN']}>
+                      <HodDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/faculty/dashboard"
+                  element={
+                    <ProtectedRoute allowedRoles={['FACULTY', 'HOD', 'ADMIN']}>
+                      <FacultyDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/student/dashboard"
+                  element={
+                    <ProtectedRoute allowedRoles={['STUDENT', 'ADMIN']}>
+                      <StudentDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/university/timetable"
+                  element={
+                    <ProtectedRoute allowedRoles={['ADMIN', 'HOD', 'FACULTY', 'STUDENT']}>
+                      <UniversityModules />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/university/exams"
+                  element={
+                    <ProtectedRoute allowedRoles={['ADMIN', 'HOD', 'FACULTY', 'STUDENT']}>
+                      <UniversityModules />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/university/fees"
+                  element={
+                    <ProtectedRoute allowedRoles={['ADMIN', 'HOD', 'FACULTY', 'STUDENT']}>
+                      <UniversityModules />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/university/notices"
+                  element={
+                    <ProtectedRoute allowedRoles={['ADMIN', 'HOD', 'FACULTY', 'STUDENT']}>
+                      <UniversityModules />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/university/notifications"
+                  element={
+                    <ProtectedRoute allowedRoles={['ADMIN', 'HOD', 'FACULTY', 'STUDENT']}>
+                      <UniversityModules />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/university/complaints"
+                  element={
+                    <ProtectedRoute allowedRoles={['ADMIN', 'HOD', 'FACULTY', 'STUDENT']}>
+                      <UniversityModules />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/university/audit"
+                  element={
+                    <ProtectedRoute allowedRoles={['ADMIN', 'HOD']}>
+                      <UniversityModules />
+                    </ProtectedRoute>
+                  }
+                />
+              </Routes>
+            </main>
+            <Footer />
+          </div>
+        </AuthProvider>
+      </ToastProvider>
     </BrowserRouter>
   );
 }
