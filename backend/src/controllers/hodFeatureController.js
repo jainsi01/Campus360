@@ -141,6 +141,128 @@ const getFilters = asyncHandler(async (req, res) => {
   });
 });
 
+const getSubjects = asyncHandler(async (req, res) => {
+  const dept = await getScopedDepartment(req);
+  if (!dept) throw new NotFoundError('No department found associated with your account.');
+
+  const subjects = await HodModel.getSubjectsByDepartment(dept.id);
+  res.status(200).json({ success: true, department: dept, data: subjects });
+});
+
+const addSubject = asyncHandler(async (req, res) => {
+  const dept = await getScopedDepartment(req);
+  if (!dept) throw new NotFoundError('No department found associated with your account.');
+
+  const { name, code, courseId, semester, credits } = req.body;
+  const subjectId = await HodModel.addDepartmentSubject({
+    name,
+    code,
+    departmentId: dept.id,
+    courseId,
+    semester,
+    credits
+  });
+
+  res.status(201).json({ success: true, message: 'Department subject added successfully', data: { id: subjectId } });
+});
+
+const editSubject = asyncHandler(async (req, res) => {
+  const dept = await getScopedDepartment(req);
+  if (!dept) throw new NotFoundError('No department found associated with your account.');
+
+  const { name, code, courseId, semester, credits } = req.body;
+  await HodModel.editDepartmentSubject({
+    id: req.params.id,
+    departmentId: dept.id,
+    name,
+    code,
+    courseId,
+    semester,
+    credits
+  });
+
+  res.status(200).json({ success: true, message: 'Department subject updated successfully' });
+});
+
+const assignFacultyToSubject = asyncHandler(async (req, res) => {
+  const dept = await getScopedDepartment(req);
+  if (!dept) throw new NotFoundError('No department found associated with your account.');
+
+  const { facultyId, subjectId, academicYear, semester } = req.body;
+  await HodModel.assignFacultyToSubject({ facultyId, subjectId, academicYear, semester });
+
+  res.status(200).json({ success: true, message: 'Faculty assigned to department subject successfully' });
+});
+
+const getAssignments = asyncHandler(async (req, res) => {
+  const dept = await getScopedDepartment(req);
+  if (!dept) throw new NotFoundError('No department found associated with your account.');
+
+  const assignments = await HodModel.getDepartmentAssignments(dept.id);
+  res.status(200).json({ success: true, department: dept, data: assignments });
+});
+
+const getNotices = asyncHandler(async (req, res) => {
+  const dept = await getScopedDepartment(req);
+  if (!dept) throw new NotFoundError('No department found associated with your account.');
+
+  const notices = await HodModel.getDepartmentNotices(dept.id);
+  res.status(200).json({ success: true, department: dept, data: notices });
+});
+
+const createNotice = asyncHandler(async (req, res) => {
+  const dept = await getScopedDepartment(req);
+  if (!dept) throw new NotFoundError('No department found associated with your account.');
+
+  const { title, description, targetRole, publishDate, expiryDate } = req.body;
+  const noticeId = await HodModel.createDepartmentNotice({
+    title,
+    description,
+    createdBy: req.user.id,
+    targetRole,
+    departmentId: dept.id,
+    publishDate,
+    expiryDate
+  });
+
+  res.status(201).json({ success: true, message: 'Department notice published successfully', data: { id: noticeId } });
+});
+
+const editNotice = asyncHandler(async (req, res) => {
+  const dept = await getScopedDepartment(req);
+  if (!dept) throw new NotFoundError('No department found associated with your account.');
+
+  const { title, description, targetRole, publishDate, expiryDate } = req.body;
+  await HodModel.editDepartmentNotice({
+    id: req.params.id,
+    departmentId: dept.id,
+    title,
+    description,
+    targetRole,
+    publishDate,
+    expiryDate
+  });
+
+  res.status(200).json({ success: true, message: 'Department notice updated successfully' });
+});
+
+const deleteNotice = asyncHandler(async (req, res) => {
+  const dept = await getScopedDepartment(req);
+  if (!dept) throw new NotFoundError('No department found associated with your account.');
+
+  await HodModel.deleteDepartmentNotice(req.params.id, dept.id);
+  res.status(200).json({ success: true, message: 'Department notice deleted successfully' });
+});
+
+const approveResults = asyncHandler(async (req, res) => {
+  const dept = await getScopedDepartment(req);
+  if (!dept) throw new NotFoundError('No department found associated with your account.');
+
+  const { examId, subjectId } = req.body;
+  const approval = await HodModel.approveResults({ departmentId: dept.id, examId, subjectId });
+  res.status(200).json({ success: true, message: 'Department academic results approved successfully', data: approval });
+});
+
 module.exports = {
   getDashboard,
   getStudents,
@@ -149,5 +271,15 @@ module.exports = {
   getAcademicAnalytics,
   getResults,
   getReports,
-  getFilters
+  getFilters,
+  getSubjects,
+  addSubject,
+  editSubject,
+  assignFacultyToSubject,
+  getAssignments,
+  getNotices,
+  createNotice,
+  editNotice,
+  deleteNotice,
+  approveResults
 };

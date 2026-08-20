@@ -40,7 +40,12 @@ import {
   UserCheck,
   RefreshCw,
   TrendingUp,
-  FileText
+  FileText,
+  Bell,
+  Plus,
+  Edit,
+  Trash2,
+  Check
 } from 'lucide-react';
 
 const CHART_COLORS = ['#818cf8', '#34d399', '#fbbf24', '#f87171', '#a78bfa', '#38bdf8'];
@@ -49,9 +54,11 @@ const tabs = [
   { key: 'overview', label: 'Department Dashboard', icon: Building2 },
   { key: 'students', label: 'Department Students', icon: GraduationCap },
   { key: 'faculty', label: 'Department Faculty', icon: Users },
+  { key: 'subjects', label: 'Department Subjects', icon: BookMarked },
   { key: 'attendance', label: 'Attendance Analytics', icon: CalendarCheck2 },
-  { key: 'academic', label: 'Academic Analytics', icon: BarChart3 },
-  { key: 'results', label: 'Results', icon: Award },
+  { key: 'assignments', label: 'Assignments Activity', icon: FileText },
+  { key: 'results', label: 'Results & Approval', icon: Award },
+  { key: 'notices', label: 'Department Notices', icon: Bell },
   { key: 'reports', label: 'Reports', icon: FileSpreadsheet }
 ];
 
@@ -84,6 +91,14 @@ const HodDashboard = () => {
   const [results, setResults] = useState({ summary: {}, results: [] });
   const [reports, setReports] = useState(null);
   const [filters, setFilters] = useState({ courses: [], subjects: [], exams: [] });
+  const [subjects, setSubjects] = useState([]);
+  const [assignments, setAssignments] = useState([]);
+  const [notices, setNotices] = useState([]);
+
+  // Modal State for HOD Operational Actions
+  const [hodModalOpen, setHodModalOpen] = useState(false);
+  const [hodModalType, setHodModalType] = useState(''); // 'SUBJECT', 'NOTICE', 'APPROVAL'
+  const [hodFormData, setHodFormData] = useState({});
 
   // UI Search & Filter state
   const [studentSearch, setStudentSearch] = useState('');
@@ -114,16 +129,7 @@ const HodDashboard = () => {
     setLoading(true);
     setError('');
     try {
-      const [
-        overviewRes,
-        studentsRes,
-        facultyRes,
-        attendanceRes,
-        academicRes,
-        resultsRes,
-        reportsRes,
-        filtersRes
-      ] = await Promise.all([
+      const resultsList = await Promise.allSettled([
         api.get('/hod-features/dashboard'),
         api.get('/hod-features/students'),
         api.get('/hod-features/faculty'),
@@ -131,17 +137,25 @@ const HodDashboard = () => {
         api.get('/hod-features/academic-analytics'),
         api.get('/hod-features/results'),
         api.get('/hod-features/reports'),
-        api.get('/hod-features/filters')
+        api.get('/hod-features/filters'),
+        api.get('/hod-features/subjects'),
+        api.get('/hod-features/assignments'),
+        api.get('/hod-features/notices')
       ]);
 
-      setOverview(overviewRes.data?.data || {});
-      setStudents(studentsRes.data?.data || []);
-      setFaculty(facultyRes.data?.data || []);
-      setAttendance(attendanceRes.data?.data || {});
-      setAcademic(academicRes.data?.data || {});
-      setResults(resultsRes.data?.data || {});
-      setReports(reportsRes.data?.data || null);
-      setFilters(filtersRes.data?.data || {});
+      const getData = (idx) => (resultsList[idx].status === 'fulfilled' ? resultsList[idx].value.data?.data : null);
+
+      setOverview(getData(0) || {});
+      setStudents(getData(1) || []);
+      setFaculty(getData(2) || []);
+      setAttendance(getData(3) || {});
+      setAcademic(getData(4) || {});
+      setResults(getData(5) || {});
+      setReports(getData(6) || null);
+      setFilters(getData(7) || {});
+      setSubjects(getData(8) || []);
+      setAssignments(getData(9) || []);
+      setNotices(getData(10) || []);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch HOD department details.');
     } finally {
@@ -1018,6 +1032,119 @@ const HodDashboard = () => {
                       })}
                     </tbody>
                   </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: SUBJECTS */}
+          {activeTab === 'subjects' && (
+            <div className="feature-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <div>
+                  <h2 style={{ fontSize: '1.3rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <BookMarked size={22} color="var(--primary)" /> Department Subjects
+                  </h2>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '0.2rem 0 0 0' }}>
+                    Curriculum subjects offered by {departmentName} ({departmentCode}).
+                  </p>
+                </div>
+              </div>
+
+              {subjects.length === 0 ? (
+                <p style={{ color: 'var(--text-secondary)' }}>No department subjects found.</p>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
+                        <th style={{ padding: '0.8rem' }}>Subject Code</th>
+                        <th style={{ padding: '0.8rem' }}>Subject Name</th>
+                        <th style={{ padding: '0.8rem' }}>Semester</th>
+                        <th style={{ padding: '0.8rem' }}>Credits</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {subjects.map(s => (
+                        <tr key={s.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                          <td style={{ padding: '0.8rem', fontWeight: 600, color: '#818cf8' }}>{s.code}</td>
+                          <td style={{ padding: '0.8rem', fontWeight: 600 }}>{s.name}</td>
+                          <td style={{ padding: '0.8rem' }}>Semester {s.semester}</td>
+                          <td style={{ padding: '0.8rem' }}>{s.credits} Credits</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: ASSIGNMENTS */}
+          {activeTab === 'assignments' && (
+            <div className="feature-card">
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h2 style={{ fontSize: '1.3rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <FileText size={22} color="var(--primary)" /> Department Assignments Monitoring
+                </h2>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '0.2rem 0 0 0' }}>
+                  Active coursework & assignments issued by department faculty.
+                </p>
+              </div>
+
+              {assignments.length === 0 ? (
+                <p style={{ color: 'var(--text-secondary)' }}>No assignments currently published in this department.</p>
+              ) : (
+                <div style={{ display: 'grid', gap: '1rem' }}>
+                  {assignments.map(a => (
+                    <div key={a.id} style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.25rem', background: 'var(--bg-input)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <div>
+                          <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>{a.title}</h4>
+                          <span style={{ color: '#818cf8', fontSize: '0.85rem', fontWeight: 600 }}>{a.subject_name} ({a.subject_code}) • By Prof. {a.faculty_name}</span>
+                        </div>
+                        <span style={{ padding: '0.25rem 0.65rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 700, background: 'rgba(99,102,241,0.15)', color: '#818cf8' }}>
+                          Deadline: {new Date(a.deadline).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.75rem', marginBottom: 0 }}>{a.description}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: NOTICES */}
+          {activeTab === 'notices' && (
+            <div className="feature-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                <div>
+                  <h2 style={{ fontSize: '1.3rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Bell size={22} color="var(--primary)" /> Department Notices & Announcements
+                  </h2>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '0.2rem 0 0 0' }}>
+                    Official announcements for students and faculty in {departmentName}.
+                  </p>
+                </div>
+              </div>
+
+              {notices.length === 0 ? (
+                <p style={{ color: 'var(--text-secondary)' }}>No department notices published yet.</p>
+              ) : (
+                <div style={{ display: 'grid', gap: '1rem' }}>
+                  {notices.map(n => (
+                    <div key={n.id} style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.25rem', background: 'var(--bg-input)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>{n.title}</h4>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Published: {new Date(n.publish_date).toLocaleDateString()}</span>
+                      </div>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>{n.description}</p>
+                      <div style={{ marginTop: '0.75rem', fontSize: '0.8rem', color: '#818cf8', fontWeight: 600 }}>
+                        Target: {n.target_role} • Published by: {n.author_name}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

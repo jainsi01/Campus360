@@ -37,9 +37,6 @@ const AIChatbot = () => {
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
-  // If not logged in, don't render chatbot button
-  if (!isAuthenticated) return null;
-
   const role = user?.role || 'STUDENT';
   const suggestions = ROLE_SUGGESTIONS[role] || ROLE_SUGGESTIONS.STUDENT;
 
@@ -55,7 +52,7 @@ const AIChatbot = () => {
 
   // Initial welcome message
   useEffect(() => {
-    if (messages.length === 0 && user) {
+    if (isAuthenticated && messages.length === 0 && user) {
       setMessages([
         {
           id: 'welcome',
@@ -65,7 +62,11 @@ const AIChatbot = () => {
         }
       ]);
     }
-  }, [user, role]);
+  }, [isAuthenticated, user, role, messages.length]);
+
+  // Keep hooks in the same order on both sides of an authentication change.
+  // Returning before the effects makes React crash immediately after sign-in.
+  if (!isAuthenticated) return null;
 
   const handleSendMessage = async (textToSend) => {
     const queryText = (textToSend || input).trim();

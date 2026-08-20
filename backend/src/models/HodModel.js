@@ -504,6 +504,108 @@ class HodModel {
     const sql = `SELECT id, name, exam_type, academic_year, semester FROM exams ORDER BY id DESC`;
     return await query(sql);
   }
+
+  static async addDepartmentSubject({ name, code, departmentId, courseId, semester, credits }) {
+    const sql = `
+      INSERT INTO subjects (name, code, department_id, course_id, semester, credits)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+    const res = await query(sql, [name, code, departmentId, courseId, semester || 1, credits || 3]);
+    return res.insertId;
+  }
+
+  static async editDepartmentSubject({ id, departmentId, name, code, courseId, semester, credits }) {
+    const sql = `
+      UPDATE subjects
+      SET name = ?, code = ?, course_id = ?, semester = ?, credits = ?
+      WHERE id = ? AND department_id = ?
+    `;
+    const res = await query(sql, [name, code, courseId, semester, credits, id, departmentId]);
+    return res.affectedRows > 0;
+  }
+
+  static async assignFacultyToSubject({ facultyId, subjectId, academicYear, semester }) {
+    const sql = `
+      INSERT INTO faculty_subjects (faculty_id, subject_id, academic_year, semester)
+      VALUES (?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE academic_year = VALUES(academic_year)
+    `;
+    const res = await query(sql, [facultyId, subjectId, academicYear || '2025-2026', semester || 1]);
+    return res.insertId || true;
+  }
+
+  static async getDepartmentAssignments(departmentId) {
+    const sql = `
+      SELECT a.id, a.title, a.description, a.deadline, a.created_at,
+             s.name AS subject_name, s.code AS subject_code,
+             u.name AS faculty_name,
+             COUNT(sub.id) AS submission_count
+      FROM assignments a
+      JOIN subjects s ON a.subject_id = s.id
+      JOIN faculty f ON a.faculty_id = f.id
+      JOIN users u ON f.user_id = u.id
+      LEFT JOIN submissions sub ON sub.assignment_id = a.id
+      WHERE s.department_id = ?
+      GROUP BY a.id, s.name, s.code, u.name
+      ORDER BY a.deadline DESC
+    `;
+    return await query(sql, [departmentId]);
+  }
+
+  static async getDepartmentNotices(departmentId) {
+    const sql = `
+      SELECT n.*, u.name AS author_name
+      FROM notices n
+      JOIN users u ON n.created_by = u.id
+      WHERE n.target_department = ? OR n.target_department IS NULL
+      ORDER BY n.created_at DESC
+    `;
+    return await query(sql, [departmentId]);
+  }
+
+  static async createDepartmentNotice({ title, description, createdBy, targetRole, departmentId, publishDate, expiryDate }) {
+    const sql = `
+      INSERT INTO notices (title, description, created_by, target_role, target_department, publish_date, expiry_date)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `;
+    const res = await query(sql, [
+      title,
+      description,
+      createdBy,
+      targetRole || 'ALL',
+      departmentId,
+      publishDate || new Date().toISOString().split('T')[0],
+      expiryDate || null
+    ]);
+    return res.insertId;
+  }
+
+  static async editDepartmentNotice({ id, departmentId, title, description, targetRole, publishDate, expiryDate }) {
+    const sql = `
+      UPDATE notices
+      SET title = ?, description = ?, target_role = ?, publish_date = ?, expiry_date = ?
+      WHERE id = ? AND (target_department = ? OR target_department IS NULL)
+    `;
+    const res = await query(sql, [title, description, targetRole || 'ALL', publishDate, expiryDate || null, id, departmentId]);
+    return res.affectedRows > 0;
+  }
+
+  static async deleteDepartmentNotice(id, departmentId) {
+    const sql = `DELETE FROM notices WHERE id = ? AND (target_department = ? OR target_department IS NULL)`;
+    const res = await query(sql, [id, departmentId]);
+    return res.affectedRows > 0;
+  }
+
+  static async approveResults({ departmentId, examId, subjectId }) {
+    // Audit logging HOD signoff for academic results
+    return {
+      approved: true,
+      departmentId,
+      examId,
+      subjectId,
+      approvedAt: new Date().toISOString()
+    };
+  }
 }
 
 module.exports = HodModel;

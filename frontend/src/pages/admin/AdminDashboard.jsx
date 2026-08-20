@@ -117,6 +117,58 @@ const AdminDashboard = () => {
     setEditingItem(item);
     setFormData(item ? { ...item } : {});
     setModalOpen(true);
+    if (type === 'ADD') {
+      Promise.all([
+        axios.get('http://localhost:5000/api/departments', apiHeader),
+        axios.get('http://localhost:5000/api/courses', apiHeader),
+        axios.get('http://localhost:5000/api/students', apiHeader),
+        axios.get('http://localhost:5000/api/faculty', apiHeader),
+        axios.get('http://localhost:5000/api/subjects', apiHeader),
+        axios.get('http://localhost:5000/api/rooms', apiHeader)
+      ]).then(([departmentResponse, courseResponse, studentResponse, facultyResponse, subjectResponse, roomResponse]) => {
+        setDepartments(departmentResponse.data.data || []);
+        setCourses(courseResponse.data.data || []);
+        setStudents(studentResponse.data.data || []);
+        setFaculty(facultyResponse.data.data || []);
+        setSubjects(subjectResponse.data.data || []);
+        setRooms(roomResponse.data.data || []);
+      }).catch(() => showError('Unable to load form options'));
+    }
+  };
+
+  const advancedFields = {
+    enrollments: [
+      { name: 'studentId', label: 'Student', type: 'select', options: students.map((student) => ({ value: student.id, label: `${student.name} (${student.student_id})` })) },
+      { name: 'subjectId', label: 'Subject', type: 'select', options: subjects.map((subject) => ({ value: subject.id, label: `${subject.name} (${subject.code})` })) },
+      { name: 'academicYear', label: 'Academic Year', placeholder: '2026-2027' },
+      { name: 'semester', label: 'Semester', type: 'number', min: 1, max: 12 }
+    ],
+    exams: [
+      { name: 'name', label: 'Exam Name' },
+      { name: 'examType', label: 'Exam Type', type: 'select', options: ['INTERNAL', 'MIDTERM', 'PRACTICAL', 'FINAL'].map((value) => ({ value, label: value })) },
+      { name: 'academicYear', label: 'Academic Year', placeholder: '2026-2027' },
+      { name: 'semester', label: 'Semester', type: 'number', min: 1, max: 12 },
+      { name: 'startDate', label: 'Start Date', type: 'date' },
+      { name: 'endDate', label: 'End Date', type: 'date' }
+    ],
+    timetable: [
+      { name: 'courseId', label: 'Course', type: 'select', options: courses.map((course) => ({ value: course.id, label: course.name })) },
+      { name: 'semester', label: 'Semester', type: 'number', min: 1, max: 12 },
+      { name: 'subjectId', label: 'Subject', type: 'select', options: subjects.map((subject) => ({ value: subject.id, label: `${subject.name} (${subject.code})` })) },
+      { name: 'facultyId', label: 'Faculty', type: 'select', options: faculty.map((member) => ({ value: member.id, label: `${member.name} (${member.faculty_id})` })) },
+      { name: 'roomId', label: 'Room', type: 'select', options: rooms.map((room) => ({ value: room.id, label: `${room.room_number} — ${room.building}` })) },
+      { name: 'dayOfWeek', label: 'Day', type: 'select', options: ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'].map((value) => ({ value, label: value })) },
+      { name: 'startTime', label: 'Start Time', type: 'time' },
+      { name: 'endTime', label: 'End Time', type: 'time' }
+    ],
+    fees: [
+      { name: 'studentId', label: 'Student', type: 'select', options: students.map((student) => ({ value: student.id, label: `${student.name} (${student.student_id})` })) },
+      { name: 'academicYear', label: 'Academic Year', placeholder: '2026-2027' },
+      { name: 'semester', label: 'Semester', type: 'number', min: 1, max: 12 },
+      { name: 'totalAmount', label: 'Total Amount', type: 'number', min: 0 },
+      { name: 'paidAmount', label: 'Initial Paid Amount', type: 'number', min: 0 },
+      { name: 'dueDate', label: 'Due Date', type: 'date' }
+    ]
   };
 
   const closeModal = () => {
@@ -445,14 +497,26 @@ const AdminDashboard = () => {
 
             {/* GENERAL TABLE FOR OTHER TABS */}
             {['courses', 'subjects', 'rooms', 'enrollments', 'exams', 'timetable', 'fees', 'notices'].includes(activeTab) && (
-              <div style={{ textAlign: 'center', padding: '2rem' }}>
-                <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                  Managing <strong>{activeTab.toUpperCase()}</strong> records. Click <strong>+ Add New</strong> above to create or select an item to modify.
-                </p>
-                <button onClick={() => openModal('ADD')} className="btn btn-primary">
-                  <Plus size={16} /> Add {activeTab.slice(0, -1)} Record
-                </button>
-              </div>
+              activeTab === 'subjects' ? (
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead><tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}><th style={{ padding: '0.75rem' }}>Code</th><th style={{ padding: '0.75rem' }}>Subject</th><th style={{ padding: '0.75rem' }}>Department</th><th style={{ padding: '0.75rem' }}>Course</th><th style={{ padding: '0.75rem' }}>Semester</th><th style={{ padding: '0.75rem' }}>Credits</th></tr></thead>
+                  <tbody>{subjects.filter((subject) => `${subject.name} ${subject.code}`.toLowerCase().includes(search.toLowerCase())).map((subject) => <tr key={subject.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}><td style={{ padding: '0.75rem', fontWeight: 600 }}>{subject.code}</td><td style={{ padding: '0.75rem' }}>{subject.name}</td><td style={{ padding: '0.75rem' }}>{subject.department_name}</td><td style={{ padding: '0.75rem' }}>{subject.course_name}</td><td style={{ padding: '0.75rem' }}>{subject.semester}</td><td style={{ padding: '0.75rem' }}>{subject.credits}</td></tr>)}</tbody>
+                </table>
+              ) : activeTab === 'courses' ? (
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead><tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}><th style={{ padding: '0.75rem' }}>Code</th><th style={{ padding: '0.75rem' }}>Course</th><th style={{ padding: '0.75rem' }}>Department</th><th style={{ padding: '0.75rem' }}>Duration</th></tr></thead>
+                  <tbody>{courses.filter((course) => `${course.name} ${course.code}`.toLowerCase().includes(search.toLowerCase())).map((course) => <tr key={course.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}><td style={{ padding: '0.75rem', fontWeight: 600 }}>{course.code}</td><td style={{ padding: '0.75rem' }}>{course.name}</td><td style={{ padding: '0.75rem' }}>{course.department_name}</td><td style={{ padding: '0.75rem' }}>{course.duration_years} years</td></tr>)}</tbody>
+                </table>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                    Managing <strong>{activeTab.toUpperCase()}</strong> records. Click <strong>+ Add New</strong> above to create or select an item to modify.
+                  </p>
+                  <button onClick={() => openModal('ADD')} className="btn btn-primary">
+                    <Plus size={16} /> Add {activeTab.slice(0, -1)} Record
+                  </button>
+                </div>
+              )
             )}
           </>
         )}
@@ -460,8 +524,8 @@ const AdminDashboard = () => {
 
       {/* CRUD MODAL DIALOG */}
       {modalOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.75)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '16px', width: '100%', maxWidth: '500px', padding: '2rem', boxShadow: 'var(--shadow-lg)' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)', zIndex: 1100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '1rem' }}>
+          <div style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '16px', width: '100%', maxWidth: '500px', maxHeight: 'calc(100vh - 2rem)', overflowY: 'auto', padding: '2rem', boxShadow: 'var(--shadow-lg)', margin: 'auto 0' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{modalType === 'ADD' ? 'Add New' : 'Edit'} {activeTab.slice(0, -1).toUpperCase()}</h3>
               <button onClick={closeModal} className="icon-btn-subtle"><X size={20} /></button>
@@ -508,11 +572,76 @@ const AdminDashboard = () => {
                     <label className="form-label">Description</label>
                     <textarea required value={formData.description || ''} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="form-input" style={{ paddingLeft: '1rem', minHeight: '80px' }} />
                   </div>
+                  <div className="form-group">
+                    <label className="form-label">Publish Date</label>
+                    <input type="date" required value={formData.publishDate || ''} onChange={(e) => setFormData({ ...formData, publishDate: e.target.value })} className="form-input" />
+                  </div>
                 </>
               )}
 
-              {/* Default Fallback Fields */}
-              {!['departments', 'rooms', 'notices'].includes(activeTab) && (
+              {activeTab === 'courses' && (
+                <>
+                  <div className="form-group"><label className="form-label">Course Name</label><input required value={formData.name || ''} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="form-input" /></div>
+                  <div className="form-group"><label className="form-label">Course Code</label><input required value={formData.code || ''} onChange={(e) => setFormData({ ...formData, code: e.target.value })} className="form-input" /></div>
+                  <div className="form-group"><label className="form-label">Department</label><select required value={formData.departmentId || ''} onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })} className="form-input"><option value="">Select department</option>{departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select></div>
+                  <div className="form-group"><label className="form-label">Duration (years)</label><input required min="1" max="6" type="number" value={formData.durationYears || ''} onChange={(e) => setFormData({ ...formData, durationYears: e.target.value })} className="form-input" /></div>
+                </>
+              )}
+
+              {activeTab === 'subjects' && (
+                <>
+                  <div className="form-group"><label className="form-label">Subject Name</label><input required value={formData.name || ''} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="form-input" /></div>
+                  <div className="form-group"><label className="form-label">Subject Code</label><input required value={formData.code || ''} onChange={(e) => setFormData({ ...formData, code: e.target.value })} className="form-input" /></div>
+                  <div className="form-group"><label className="form-label">Department</label><select required value={formData.departmentId || ''} onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })} className="form-input"><option value="">Select department</option>{departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select></div>
+                  <div className="form-group"><label className="form-label">Course</label><select required value={formData.courseId || ''} onChange={(e) => setFormData({ ...formData, courseId: e.target.value })} className="form-input"><option value="">Select course</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.name}</option>)}</select></div>
+                  <div className="form-group"><label className="form-label">Semester</label><input required min="1" max="12" type="number" value={formData.semester || ''} onChange={(e) => setFormData({ ...formData, semester: e.target.value })} className="form-input" /></div>
+                  <div className="form-group"><label className="form-label">Credits</label><input required min="1" max="10" type="number" value={formData.credits || ''} onChange={(e) => setFormData({ ...formData, credits: e.target.value })} className="form-input" /></div>
+                </>
+              )}
+
+              {activeTab === 'students' && (
+                <>
+                  <div className="form-group"><label className="form-label">Student Name</label><input required value={formData.name || ''} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="form-input" /></div>
+                  <div className="form-group"><label className="form-label">Email</label><input required type="email" value={formData.email || ''} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="form-input" /></div>
+                  <div className="form-group"><label className="form-label">Temporary Password</label><input required minLength="6" type="password" value={formData.password || ''} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="form-input" /></div>
+                  <div className="form-group"><label className="form-label">Roll ID</label><input required value={formData.studentId || ''} onChange={(e) => setFormData({ ...formData, studentId: e.target.value })} className="form-input" /></div>
+                  <div className="form-group"><label className="form-label">Department</label><select required value={formData.departmentId || ''} onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })} className="form-input"><option value="">Select department</option>{departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select></div>
+                  <div className="form-group"><label className="form-label">Course</label><select required value={formData.courseId || ''} onChange={(e) => setFormData({ ...formData, courseId: e.target.value })} className="form-input"><option value="">Select course</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.name}</option>)}</select></div>
+                  <div className="form-group"><label className="form-label">Semester</label><input required min="1" max="12" type="number" value={formData.semester || ''} onChange={(e) => setFormData({ ...formData, semester: e.target.value })} className="form-input" /></div>
+                  <div className="form-group"><label className="form-label">Batch</label><input required placeholder="2026-2030" value={formData.batch || ''} onChange={(e) => setFormData({ ...formData, batch: e.target.value })} className="form-input" /></div>
+                  <div className="form-group"><label className="form-label">Date of Birth</label><input required type="date" value={formData.dateOfBirth || ''} onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })} className="form-input" /></div>
+                  <div className="form-group"><label className="form-label">Gender</label><select required value={formData.gender || ''} onChange={(e) => setFormData({ ...formData, gender: e.target.value })} className="form-input"><option value="">Select gender</option><option value="MALE">Male</option><option value="FEMALE">Female</option><option value="OTHER">Other</option></select></div>
+                  <div className="form-group"><label className="form-label">Admission Date</label><input required type="date" value={formData.admissionDate || ''} onChange={(e) => setFormData({ ...formData, admissionDate: e.target.value })} className="form-input" /></div>
+                </>
+              )}
+
+              {activeTab === 'faculty' && (
+                <>
+                  <div className="form-group"><label className="form-label">Faculty Name</label><input required value={formData.name || ''} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="form-input" /></div>
+                  <div className="form-group"><label className="form-label">Email</label><input required type="email" value={formData.email || ''} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="form-input" /></div>
+                  <div className="form-group"><label className="form-label">Temporary Password</label><input required minLength="6" type="password" value={formData.password || ''} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="form-input" /></div>
+                  <div className="form-group"><label className="form-label">Faculty Code</label><input required value={formData.facultyId || ''} onChange={(e) => setFormData({ ...formData, facultyId: e.target.value })} className="form-input" /></div>
+                  <div className="form-group"><label className="form-label">Department</label><select required value={formData.departmentId || ''} onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })} className="form-input"><option value="">Select department</option>{departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select></div>
+                  <div className="form-group"><label className="form-label">Designation</label><input required value={formData.designation || ''} onChange={(e) => setFormData({ ...formData, designation: e.target.value })} className="form-input" /></div>
+                  <div className="form-group"><label className="form-label">Joining Date</label><input required type="date" value={formData.joiningDate || ''} onChange={(e) => setFormData({ ...formData, joiningDate: e.target.value })} className="form-input" /></div>
+                </>
+              )}
+
+              {advancedFields[activeTab]?.map((field) => (
+                <div className="form-group" key={field.name}>
+                  <label className="form-label">{field.label}</label>
+                  {field.type === 'select' ? (
+                    <select required value={formData[field.name] || ''} onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })} className="form-input">
+                      <option value="">Select {field.label.toLowerCase()}</option>
+                      {field.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </select>
+                  ) : (
+                    <input required type={field.type || 'text'} min={field.min} max={field.max} placeholder={field.placeholder} value={formData[field.name] || ''} onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })} className="form-input" />
+                  )}
+                </div>
+              ))}
+
+              {!['departments', 'rooms', 'notices', 'courses', 'subjects', 'students', 'faculty', 'enrollments', 'exams', 'timetable', 'fees'].includes(activeTab) && (
                 <div className="form-group">
                   <label className="form-label">Title / Name</label>
                   <input type="text" required value={formData.name || formData.title || ''} onChange={(e) => setFormData({ ...formData, name: e.target.value, title: e.target.value })} className="form-input" style={{ paddingLeft: '1rem' }} />
