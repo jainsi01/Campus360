@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const verifyToken = async () => {
       if (token) {
-        try {
+        try { 
           const res = await api.get('/auth/me');
           if (res.data.success) {
             setUser(res.data.data);
