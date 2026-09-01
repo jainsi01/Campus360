@@ -2,17 +2,16 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { 
-  School, 
   Lock, 
   Mail, 
   Eye, 
   EyeOff, 
   AlertCircle, 
-  CheckCircle2, 
   ShieldCheck, 
   UserCheck, 
   GraduationCap, 
-  Building2 
+  Building2,
+  ArrowRight
 } from 'lucide-react';
 
 const DEMO_ACCOUNTS = [
@@ -21,32 +20,28 @@ const DEMO_ACCOUNTS = [
     title: 'Administrator',
     email: 'admin@campus360.edu',
     password: 'password123',
-    icon: ShieldCheck,
-    badgeClass: 'badge-admin'
+    icon: ShieldCheck
   },
   {
     role: 'HOD',
     title: 'Head of Dept',
     email: 'rajesh.kumar@campus360.edu',
     password: 'password123',
-    icon: Building2,
-    badgeClass: 'badge-hod'
+    icon: Building2
   },
   {
     role: 'FACULTY',
     title: 'Faculty Member',
     email: 'priya.patel@campus360.edu',
     password: 'password123',
-    icon: UserCheck,
-    badgeClass: 'badge-faculty'
+    icon: UserCheck
   },
   {
     role: 'STUDENT',
     title: 'Student',
     email: 'aarav.mehta@campus360.edu',
     password: 'password123',
-    icon: GraduationCap,
-    badgeClass: 'badge-student'
+    icon: GraduationCap
   }
 ];
 
@@ -61,8 +56,6 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from?.pathname || '/dashboard';
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLocalError('');
@@ -76,15 +69,7 @@ const LoginPage = () => {
     setSubmitting(false);
 
     if (result.success) {
-      // Redirect based on user role
-      const userRole = result.user.role;
-      let targetPath = '/dashboard';
-      if (userRole === 'ADMIN') targetPath = '/admin/dashboard';
-      else if (userRole === 'HOD') targetPath = '/hod/dashboard';
-      else if (userRole === 'FACULTY') targetPath = '/faculty/dashboard';
-      else if (userRole === 'STUDENT') targetPath = '/student/dashboard';
-
-      navigate(targetPath, { replace: true });
+      navigate('/dashboard', { replace: true });
     }
   };
 
@@ -98,67 +83,96 @@ const LoginPage = () => {
   const displayError = localError || authError;
 
   return (
-    <div className="login-page-wrapper">
-      <div className="login-card-container">
-        <div className="login-header">
-          <div className="brand-logo-large">
-            <img src="/campus360-logo.svg" alt="Campus360 logo" className="logo-icon" />
-          </div>
-          <h1 className="login-title">Campus360 System Sign-In</h1>
-          <p className="login-subtitle">
-            Enter your credentials to access your academic portal
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', background: 'var(--bg-canvas)' }}>
+      <div className="glass-card" style={{ maxWidth: '460px', width: '100%', padding: '2.5rem', borderRadius: '24px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <img src="/campus360-logo.svg" alt="Campus360 Logo" style={{ width: '54px', height: '54px', marginBottom: '0.75rem' }} />
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Campus360</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.2rem' }}>
+            Production University Management Portal
           </p>
         </div>
 
         {displayError && (
-          <div className="alert alert-danger" role="alert">
-            <AlertCircle size={20} className="alert-icon" />
+          <div style={{ padding: '0.85rem 1rem', borderRadius: '14px', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#ef4444', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+            <AlertCircle size={18} />
             <span>{displayError}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="login-form">
-          <div className="form-group">
-            <label className="form-label" htmlFor="email-input">Email Address</label>
-            <div className="input-with-icon">
-              <Mail size={18} className="field-icon" />
+        {/* Demo Quick Selection Pills */}
+        <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>
+            QUICK DEMO ACCOUNTS:
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+            {DEMO_ACCOUNTS.map((demo) => {
+              const Icon = demo.icon;
+              const isSelected = email === demo.email;
+              return (
+                <button
+                  key={demo.role}
+                  type="button"
+                  onClick={() => handleSelectDemoAccount(demo)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '12px',
+                    border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border-color)',
+                    background: isSelected ? 'var(--primary-light)' : 'var(--bg-input)',
+                    color: isSelected ? 'var(--primary)' : 'var(--text-primary)',
+                    fontWeight: 600,
+                    fontSize: '0.78rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <Icon size={14} /> {demo.title}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Sign In Form */}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
+              Institutional Email
+            </label>
+            <div style={{ position: 'relative' }}>
+              <Mail size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input
-                id="email-input"
                 type="email"
-                className="form-input"
+                required
                 placeholder="name@campus360.edu"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
+                style={{ width: '100%', padding: '0.75rem 0.85rem 0.75rem 2.4rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--text-primary)', outline: 'none', fontSize: '0.9rem' }}
               />
             </div>
           </div>
 
-          <div className="form-group">
-            <div className="form-label-row">
-              <label className="form-label" htmlFor="password-input">Password</label>
-              <a href="#forgot" onClick={(e) => { e.preventDefault(); alert('Please contact Campus IT Administrator to reset your password.'); }} className="forgot-link">
-                Forgot password?
-              </a>
-            </div>
-            <div className="input-with-icon">
-              <Lock size={18} className="field-icon" />
+          <div>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
+              Password
+            </label>
+            <div style={{ position: 'relative' }}>
+              <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input
-                id="password-input"
                 type={showPassword ? 'text' : 'password'}
-                className="form-input"
-                placeholder="Enter password"
+                required
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
+                style={{ width: '100%', padding: '0.75rem 2.4rem 0.75rem 2.4rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--text-primary)', outline: 'none', fontSize: '0.9rem' }}
               />
               <button
                 type="button"
-                className="toggle-password-btn"
                 onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -167,43 +181,13 @@ const LoginPage = () => {
 
           <button
             type="submit"
-            className="btn btn-primary btn-block btn-lg"
             disabled={submitting}
+            className="btn btn-primary"
+            style={{ width: '100%', padding: '0.85rem', marginTop: '0.5rem', fontSize: '0.95rem' }}
           >
-            {submitting ? (
-              <span className="btn-spinner-content">
-                <span className="spinner"></span> Authenticating...
-              </span>
-            ) : (
-              'Sign In to Campus360'
-            )}
+            {submitting ? 'Signing in...' : 'Sign In to Portal'} <ArrowRight size={16} />
           </button>
         </form>
-
-        <div className="demo-accounts-section">
-          <div className="demo-divider">
-            <span>Quick Demo Accounts</span>
-          </div>
-          <p className="demo-hint">Select a role below to auto-fill credentials:</p>
-          <div className="demo-grid">
-            {DEMO_ACCOUNTS.map((demo) => {
-              const IconComponent = demo.icon;
-              const isSelected = email === demo.email;
-              return (
-                <button
-                  key={demo.role}
-                  type="button"
-                  className={`demo-pill ${demo.badgeClass} ${isSelected ? 'selected' : ''}`}
-                  onClick={() => handleSelectDemoAccount(demo)}
-                >
-                  <IconComponent size={16} />
-                  <span>{demo.title}</span>
-                  {isSelected && <CheckCircle2 size={14} className="ml-auto" />}
-                </button>
-              );
-            })}
-          </div>
-        </div>
       </div>
     </div>
   );
