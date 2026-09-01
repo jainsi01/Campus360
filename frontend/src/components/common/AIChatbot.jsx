@@ -1,31 +1,41 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { BookOpen, CalendarDays, ClipboardList, GraduationCap, PenLine, UsersRound } from 'lucide-react';
 import api from '../../services/api';
-import { MessageSquare, X, Send, Bot, User, Trash2, Loader2, Sparkles, HelpCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import AIAvatar from './ai-chat/AIAvatar';
+import ChatComposer from './ai-chat/ChatComposer';
+import ChatHeader from './ai-chat/ChatHeader';
+import ChatMessage from './ai-chat/ChatMessage';
+import ClearChatDialog from './ai-chat/ClearChatDialog';
+import SuggestedPrompts from './ai-chat/SuggestedPrompts';
+import TypingIndicator from './ai-chat/TypingIndicator';
 
 const ROLE_SUGGESTIONS = {
   STUDENT: [
-    "How do I submit an assignment?",
-    "Where can I check my attendance?",
-    "Where are my results?",
-    "How do I submit a complaint?"
+    { title: 'Submit an assignment', description: 'Share work before the deadline', icon: PenLine, prompt: 'How do I submit an assignment?' },
+    { title: 'Check attendance', description: 'See your attendance record', icon: UsersRound, prompt: 'Where can I check my attendance?' },
+    { title: 'View my results', description: 'Find marks and exam results', icon: GraduationCap, prompt: 'Where are my results?' },
+    { title: 'Raise a complaint', description: 'Get help with an issue', icon: ClipboardList, prompt: 'How do I submit a complaint?' }
   ],
   FACULTY: [
-    "How do I create an assignment?",
-    "How do I mark attendance?",
-    "How do I upload study material?",
-    "How do I enter marks?"
+    { title: 'Create assignment', description: 'Set coursework and due dates', icon: PenLine, prompt: 'How do I create an assignment?' },
+    { title: 'Mark attendance', description: "Record today's attendance", icon: UsersRound, prompt: 'How do I mark attendance?' },
+    { title: 'Enter marks', description: 'Publish student evaluation marks', icon: GraduationCap, prompt: 'How do I enter marks?' },
+    { title: 'Upload material', description: 'Share notes and resources', icon: BookOpen, prompt: 'How do I upload study material?' },
+    { title: 'View courses', description: 'Review assigned courses', icon: BookOpen, prompt: 'How do I view my courses?' },
+    { title: 'View timetable', description: 'Check your class schedule', icon: CalendarDays, prompt: 'How do I view my timetable?' }
   ],
   HOD: [
-    "How do I view department performance?",
-    "How do I manage department notices?",
-    "How do I view department faculty & students?"
+    { title: 'Manage faculty', description: 'Review faculty information', icon: UsersRound, prompt: 'How do I manage faculty?' },
+    { title: 'Department performance', description: 'Review department insights', icon: GraduationCap, prompt: 'How do I view department performance?' },
+    { title: 'Manage courses', description: 'Organise department courses', icon: BookOpen, prompt: 'How do I manage courses?' },
+    { title: 'View reports', description: 'Access department reports', icon: ClipboardList, prompt: 'How do I view department reports?' }
   ],
   ADMIN: [
-    "How do I add a student?",
-    "How do I create a subject?",
-    "How do I manage exams?",
-    "How can I manage users?"
+    { title: 'Manage students', description: 'Add and update student records', icon: UsersRound, prompt: 'How do I manage students?' },
+    { title: 'Manage faculty', description: 'Maintain faculty profiles', icon: UsersRound, prompt: 'How do I manage faculty?' },
+    { title: 'Manage courses', description: 'Create and update courses', icon: BookOpen, prompt: 'How do I manage courses?' },
+    { title: 'System reports', description: 'Review university reports', icon: ClipboardList, prompt: 'How do I view system reports?' }
   ]
 };
 
@@ -35,34 +45,26 @@ const AIChatbot = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [showClearDialog, setShowClearDialog] = useState(false);
   const messagesEndRef = useRef(null);
+  const composerRef = useRef(null);
 
   const role = user?.role || 'STUDENT';
   const suggestions = ROLE_SUGGESTIONS[role] || ROLE_SUGGESTIONS.STUDENT;
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   useEffect(() => {
     if (isOpen) {
-      scrollToBottom();
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      window.setTimeout(() => composerRef.current?.focus(), 150);
     }
-  }, [messages, isOpen]);
+  }, [messages, isOpen, loading]);
 
-  // Initial welcome message
   useEffect(() => {
-    if (isAuthenticated && messages.length === 0 && user) {
-      setMessages([
-        {
-          id: 'welcome',
-          sender: 'bot',
-          text: `Hi **${user.name?.split(' ')[0] || 'there'}**! 👋 I am your **Campus360 Help Assistant**.\nHow can I help you today with your **${role}** portal?`,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-      ]);
-    }
-  }, [isAuthenticated, user, role, messages.length]);
+    const handleEscape = (event) => { if (event.key === 'Escape' && isOpen && !showClearDialog) setIsOpen(false); };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isOpen, showClearDialog]);
 
   // Keep hooks in the same order on both sides of an authentication change.
   // Returning before the effects makes React crash immediately after sign-in.
@@ -72,172 +74,46 @@ const AIChatbot = () => {
     const queryText = (textToSend || input).trim();
     if (!queryText || loading) return;
 
-    const userMsg = {
-      id: Date.now().toString(),
-      sender: 'user',
-      text: queryText,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
+    const userMsg = { id: Date.now().toString(), sender: 'user', text: queryText, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
 
     setMessages((prev) => [...prev, userMsg]);
     if (!textToSend) setInput('');
     setLoading(true);
 
     try {
-      const conversation = messages.filter((message) => message.id !== 'welcome').slice(-16)
+      const conversation = messages.slice(-16)
         .map((message) => ({ role: message.sender === 'bot' ? 'assistant' : 'user', content: message.text }));
       const response = await api.post('/chat', { message: queryText, conversation });
 
       const botReply = response.data?.data?.reply || response.data?.data?.message || 'I am sorry, I could not process that request.';
 
-      const botMsg = {
-        id: (Date.now() + 1).toString(),
-        sender: 'bot',
-        text: botReply,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
+      const botMsg = { id: (Date.now() + 1).toString(), sender: 'bot', text: botReply, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
 
       setMessages((prev) => [...prev, botMsg]);
     } catch (err) {
-      const errorMsg = {
-        id: (Date.now() + 1).toString(),
-        sender: 'bot',
-        text: '⚠️ Unable to connect to Campus360 AI Assistant service. Please check your backend connection.',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-      setMessages((prev) => [...prev, errorMsg]);
+      setError(true);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
-  const clearChat = () => {
-    setMessages([
-      {
-        id: Date.now().toString(),
-        sender: 'bot',
-        text: `Conversation cleared. Ask me anything about Campus360!`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }
-    ]);
-  };
+  const clearChat = () => { setMessages([]); setInput(''); setError(false); setShowClearDialog(false); };
+  const retryLastMessage = () => { const lastUserMessage = [...messages].reverse().find((message) => message.sender === 'user'); if (lastUserMessage) handleSendMessage(lastUserMessage.text); };
+  const firstName = user?.name?.split(' ')[0] || 'there';
 
   return (
     <>
-      {/* Floating Chat Trigger Button */}
-      {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="ai-chat-trigger-btn"
-          title="Open Campus360 AI Assistant"
-        >
-          <Sparkles size={20} className="sparkle-icon" />
-          <span>Campus360 AI</span>
-        </button>
-      )}
-
-      {/* Floating Chat Window */}
+      {!isOpen && <button type="button" onClick={() => setIsOpen(true)} className="ai-chat-trigger-btn" aria-label="Open Campus360 AI assistant"><AIAvatar size="trigger" /><span>Campus360 AI</span></button>}
       {isOpen && (
-        <div className="ai-chat-container">
-          {/* Chat Header */}
-          <div className="ai-chat-header">
-            <div className="ai-chat-header-info">
-              <div className="ai-bot-avatar">
-                <Bot size={20} />
-              </div>
-              <div>
-                <h4>Campus360 Assistant</h4>
-                <span className="ai-status-badge">
-                  <span className="online-dot"></span> Role: {role}
-                </span>
-              </div>
-            </div>
-            <div className="ai-chat-header-actions">
-              <button onClick={clearChat} title="Clear conversation" className="icon-btn-subtle">
-                <Trash2 size={16} />
-              </button>
-              <button onClick={() => setIsOpen(false)} title="Close Chat" className="icon-btn-subtle">
-                <X size={18} />
-              </button>
-            </div>
-          </div>
-
-          {/* Chat Messages Body */}
-          <div className="ai-chat-messages">
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`ai-message-wrapper ${msg.sender === 'user' ? 'user-wrapper' : 'bot-wrapper'}`}
-              >
-                <div className={`ai-message-bubble ${msg.sender}`}>
-                  <div className="message-content">
-                    {msg.text.split('\n').map((line, i) => (
-                      <p key={i} style={{ margin: '0.2rem 0' }}>
-                        {line}
-                      </p>
-                    ))}
-                  </div>
-                  <span className="message-timestamp">{msg.timestamp}</span>
-                </div>
-              </div>
-            ))}
-
-            {loading && (
-              <div className="ai-message-wrapper bot-wrapper">
-                <div className="ai-message-bubble bot loading">
-                  <Loader2 size={16} className="spin-animation" />
-                  <span>Assistant is thinking...</span>
-                </div>
-              </div>
-            )}
+        <section className="ai-chat-container" aria-label="Campus360 AI assistant">
+          <ChatHeader role={role} loading={loading} onNewChat={clearChat} onClear={() => setShowClearDialog(true)} onClose={() => setIsOpen(false)} />
+          <main className={`ai-chat-messages ${messages.length === 0 ? 'ai-chat-messages-empty' : ''}`} aria-live="polite">
+            {messages.length === 0 ? <div className="ai-chat-welcome"><AIAvatar size="welcome" /><p className="ai-welcome-eyebrow">CAMPUS360 AI</p><h2>Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {firstName} <span aria-hidden="true">👋</span></h2><p>How can I help with your academic work today?</p><SuggestedPrompts prompts={suggestions} onSelect={handleSendMessage} disabled={loading} /></div> : <>{messages.map((message) => <ChatMessage key={message.id} message={message} userName={firstName} />)}{error && <div className="ai-inline-error" role="alert"><strong>Unable to connect to Campus360 AI</strong><span>Please try again in a moment.</span><button type="button" onClick={retryLastMessage}>Retry</button></div>}{loading && <TypingIndicator />}</>}
             <div ref={messagesEndRef} />
-          </div>
-
-          {/* Suggested Quick Questions */}
-          <div className="ai-suggestions-container">
-            <div className="suggestions-header">
-              <HelpCircle size={14} /> Suggested Questions:
-            </div>
-            <div className="suggestions-scroll">
-              {suggestions.map((sug, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleSendMessage(sug)}
-                  disabled={loading}
-                  className="suggestion-chip"
-                >
-                  {sug}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Chat Input Bar */}
-          <div className="ai-chat-input-bar">
-            <input
-              type="text"
-              placeholder="Ask a question about Campus360..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={loading}
-            />
-            <button
-              onClick={() => handleSendMessage()}
-              disabled={!input.trim() || loading}
-              className="send-btn"
-            >
-              <Send size={16} />
-            </button>
-          </div>
-        </div>
+          </main>
+          <ChatComposer ref={composerRef} value={input} onChange={setInput} onSend={handleSendMessage} disabled={loading} />
+          <ClearChatDialog open={showClearDialog} onCancel={() => setShowClearDialog(false)} onConfirm={clearChat} />
+        </section>
       )}
     </>
   );
